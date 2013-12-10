@@ -35,14 +35,20 @@ func main() {
 
 	Endpoint := "https://" + github_user + ":" + github_password + "@" + "api.github.com"
 
-	buffer := strings.NewReader(json)
-	resp, err := http.Post(Endpoint+"/repos/scraperwiki/custard/hooks", "application/json", buffer)
-	check(err)
+	repos := []string{
+		"scraperwiki/custard",
+		"scraperwiki/tang"}
+	for _, repo := range repos {
 
-	response, err := ioutil.ReadAll(resp.Body)
-	check(err)
+		buffer := strings.NewReader(json)
+		resp, err := http.Post(Endpoint+"/repos/"+repo+"/hooks", "application/json", buffer)
+		check(err)
 
-	log.Print(string(response))
+		response, err := ioutil.ReadAll(resp.Body)
+		check(err)
+
+		log.Print(string(response))
+	}
 
 	http.HandleFunc("/hook", handleRoot)
 	log.Fatal(http.ListenAndServe(":80", nil))
