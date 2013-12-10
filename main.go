@@ -45,10 +45,15 @@ func main() {
 		check(err)
 
 		log.Println("Rate Limit:", resp.Header["X-Ratelimit-Remaining"][0])
-		response, err := ioutil.ReadAll(resp.Body)
-		check(err)
+		switch resp.StatusCode {
+		default:
+			response, err := ioutil.ReadAll(resp.Body)
+			check(err)
 
-		log.Print(string(response))
+			log.Print(string(response))
+		case 422:
+			log.Println("Already hooked for", repo)
+		}
 	}
 
 	http.HandleFunc("/hook", handleRoot)
