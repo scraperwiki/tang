@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -11,6 +12,8 @@ import (
 	"strings"
 )
 
+var address = flag.String("address", ":8080", "address to listen on")
+
 func check(err error) {
 	if err != nil {
 		panic(err)
@@ -18,6 +21,7 @@ func check(err error) {
 }
 
 func main() {
+	flag.Parse()
 
 	github_user := os.Getenv("GITHUB_USER")
 	github_password := os.Getenv("GITHUB_PASSWORD")
@@ -62,7 +66,7 @@ func main() {
 	}
 
 	http.HandleFunc("/hook", handleRoot)
-	log.Fatal(http.ListenAndServe(":80", nil))
+	log.Fatal(http.ListenAndServe(*address, nil))
 
 }
 
