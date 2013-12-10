@@ -13,6 +13,7 @@ import (
 )
 
 var address = flag.String("address", ":8080", "address to listen on")
+var repositories = flag.String("repositories", "scraperwiki/tang", "colon separated list of repositories to watch")
 
 func check(err error) {
 	if err != nil {
@@ -26,8 +27,8 @@ func main() {
 	configureHooks()
 
 	http.HandleFunc("/hook", handleRoot)
-	log.Fatal(http.ListenAndServe(*address, nil))
 
+	log.Fatal(http.ListenAndServe(*address, nil))
 }
 
 func configureHooks() {
@@ -48,10 +49,7 @@ func configureHooks() {
 
 	endpoint := "https://" + github_user + ":" + github_password + "@" + "api.github.com"
 
-	repos := []string{
-		"scraperwiki/custard",
-		"scraperwiki/tang",
-	}
+	repos := strings.Split(*repositories, ":")
 
 	for _, repo := range repos {
 
