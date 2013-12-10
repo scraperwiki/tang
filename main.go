@@ -23,6 +23,14 @@ func check(err error) {
 func main() {
 	flag.Parse()
 
+	configureHooks()
+
+	http.HandleFunc("/hook", handleRoot)
+	log.Fatal(http.ListenAndServe(*address, nil))
+
+}
+
+func configureHooks() {
 	github_user := os.Getenv("GITHUB_USER")
 	github_password := os.Getenv("GITHUB_PASSWORD")
 
@@ -64,9 +72,6 @@ func main() {
 			log.Println("Already hooked for", repo)
 		}
 	}
-
-	http.HandleFunc("/hook", handleRoot)
-	log.Fatal(http.ListenAndServe(*address, nil))
 
 }
 
