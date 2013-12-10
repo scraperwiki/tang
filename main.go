@@ -82,8 +82,10 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 	case "push":
 		log.Println("Pushed")
 		ref := doc["ref"].(string)
+		url := doc["url"].(string)
 		after := doc["after"].(string)
-		log.Println("Push to", ref, "after", after)
+		log.Println("Push to", url, ref, "after", after)
+
 	default:
 		log.Println("Unhandled event:", eventType)
 	}
