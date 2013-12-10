@@ -82,7 +82,7 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 	case "push":
 		log.Println("Pushed")
 		ref := doc["ref"].(string)
-		url := doc["url"].(string)
+		url := doc["repository"].(map[string]interface{})["url"].(string)
 		after := doc["after"].(string)
 		log.Println("Push to", url, ref, "after", after)
 
