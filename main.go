@@ -56,9 +56,17 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 	var dst bytes.Buffer
 	r.Header.Write(&dst)
 	log.Println("Incoming request headers: ", string(dst.Bytes()))
-
 	dst.Reset()
 	err = json.Indent(&dst, request, "", "  ")
 	check(err)
-	log.Println("Incoming request: ", string(dst.Bytes()))
+
+	log.Println("Incoming request:", string(dst.Bytes()))
+
+	switch eventType := r.Header["X-Github-Event"][0]; eventType {
+	case "push":
+		log.Println("Pushed")
+	default:
+		log.Println("Unhandled event:", eventType)
+	}
+
 }
