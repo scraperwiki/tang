@@ -65,12 +65,19 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 	dst.Reset()
 	err = json.Indent(&dst, request, "", "  ")
 	check(err)
+	var doc_ interface{}
+	err = json.Unmarshal(dst.Bytes(), &doc_)
+	check(err)
+	doc := doc_.(map[string]interface{})
 
 	log.Println("Incoming request:", string(dst.Bytes()))
 
 	switch eventType := r.Header["X-Github-Event"][0]; eventType {
 	case "push":
 		log.Println("Pushed")
+		ref := doc["ref"].(string)
+		after := doc["after"].(string)
+		log.Println("Push to", ref, "after", after)
 	default:
 		log.Println("Unhandled event:", eventType)
 	}
