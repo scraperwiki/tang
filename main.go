@@ -28,6 +28,7 @@ func main() {
 
 	http.HandleFunc("/hook", handleHook)
 
+	log.Println("Listening on:", *address)
 	log.Fatal(http.ListenAndServe(*address, nil))
 }
 
