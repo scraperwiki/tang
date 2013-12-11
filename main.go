@@ -107,6 +107,14 @@ func handleHook(w http.ResponseWriter, r *http.Request) {
 
 		log.Println("Push to", url, ref, "after", after)
 
+		// The name of the subdirectory where the git
+		// mirror is (or will appear, if it hasn't been
+		// cloned yet).
+		url_base := path.Base(url)
+		git_dir := url_base
+		if !strings.HasSuffix(git_dir, ".git") {
+			git_dir = git_dir + ".git"
+		}
 		clone := exec.Command("git", "clone", "--mirror", url)
 		clone.Stdout = os.Stdout
 		clone.Stderr = os.Stderr
@@ -115,12 +123,8 @@ func handleHook(w http.ResponseWriter, r *http.Request) {
 			log.Println("Cloned", url)
 		} else if _, ok := err.(*exec.ExitError); ok {
 			// Try "git remote update"
-			dir := path.Base(url)
-			if !strings.HasSuffix(dir, ".git") {
-				dir = dir + ".git"
-			}
 			remote := exec.Command("sh", "-c",
-				"cd "+dir+" && git remote update")
+				"cd "+git_dir+" && git remote update")
 			remote.Stdout = os.Stdout
 			remote.Stderr = os.Stderr
 			err = remote.Run()
@@ -129,6 +133,16 @@ func handleHook(w http.ResponseWriter, r *http.Request) {
 		} else {
 			check(err)
 		}
+		prefix_dir := url_base + "-" + after + "/"
+		log.Println("Creating", prefix_dir)
+		archive := exec.Command("sh", "-c",
+			"(cd "+git_dir+"&& git archive --prefix="+
+				url_base+"-"+after+"/ "+after+
+				") | tar xvf -")
+		archive.Stderr = os.Stderr
+		err = archive.Run()
+		check(err)
+		log.Println("Created", prefix_dir)
 
 	default:
 		log.Println("Unhandled event:", eventType)
