@@ -8,3 +8,6 @@ It's a sort of fish.
     # Set GITHUB_USER and GITHUB_PASSWORD
     . ./github-password.sh
     sudo -E ./tang
+
+Image by H. Zell used under GFDL:
+http://en.wikipedia.org/wiki/File:Acanthurus_leucosternon_01.JPG
