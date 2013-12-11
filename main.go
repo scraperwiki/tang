@@ -99,53 +99,56 @@ func handleHook(w http.ResponseWriter, r *http.Request) {
 
 	switch eventType := r.Header["X-Github-Event"][0]; eventType {
 	case "push":
-
-		log.Println("Pushed")
-		ref := doc["ref"].(string)
-		url := doc["repository"].(map[string]interface{})["url"].(string)
-		after := doc["after"].(string)
-
-		log.Println("Push to", url, ref, "after", after)
-
-		// The name of the subdirectory where the git
-		// mirror is (or will appear, if it hasn't been
-		// cloned yet).
-		url_base := path.Base(url)
-		git_dir := url_base
-		if !strings.HasSuffix(git_dir, ".git") {
-			git_dir = git_dir + ".git"
-		}
-		clone := exec.Command("git", "clone", "--mirror", url)
-		clone.Stdout = os.Stdout
-		clone.Stderr = os.Stderr
-		err = clone.Run()
-		if err == nil {
-			log.Println("Cloned", url)
-		} else if _, ok := err.(*exec.ExitError); ok {
-			// Try "git remote update"
-			remote := exec.Command("sh", "-c",
-				"cd "+git_dir+" && git remote update")
-			remote.Stdout = os.Stdout
-			remote.Stderr = os.Stderr
-			err = remote.Run()
-			check(err)
-			log.Println("Remote updated", url)
-		} else {
-			check(err)
-		}
-		prefix_dir := url_base + "-" + after + "/"
-		log.Println("Creating", prefix_dir)
-		archive := exec.Command("sh", "-c",
-			"(cd "+git_dir+"&& git archive --prefix="+
-				url_base+"-"+after+"/ "+after+
-				") | tar xvf -")
-		archive.Stderr = os.Stderr
-		err = archive.Run()
-		check(err)
-		log.Println("Created", prefix_dir)
+		eventPush(doc)
 
 	default:
 		log.Println("Unhandled event:", eventType)
 	}
 
+}
+
+func eventPush(doc map[string]interface{}) {
+	log.Println("Pushed")
+	ref := doc["ref"].(string)
+	url := doc["repository"].(map[string]interface{})["url"].(string)
+	after := doc["after"].(string)
+
+	log.Println("Push to", url, ref, "after", after)
+
+	// The name of the subdirectory where the git
+	// mirror is (or will appear, if it hasn't been
+	// cloned yet).
+	url_base := path.Base(url)
+	git_dir := url_base
+	if !strings.HasSuffix(git_dir, ".git") {
+		git_dir = git_dir + ".git"
+	}
+	clone := exec.Command("git", "clone", "--mirror", url)
+	clone.Stdout = os.Stdout
+	clone.Stderr = os.Stderr
+	err := clone.Run()
+	if err == nil {
+		log.Println("Cloned", url)
+	} else if _, ok := err.(*exec.ExitError); ok {
+		// Try "git remote update"
+		remote := exec.Command("sh", "-c",
+			"cd "+git_dir+" && git remote update")
+		remote.Stdout = os.Stdout
+		remote.Stderr = os.Stderr
+		err = remote.Run()
+		check(err)
+		log.Println("Remote updated", url)
+	} else {
+		check(err)
+	}
+	prefix_dir := url_base + "-" + after + "/"
+	log.Println("Creating", prefix_dir)
+	archive := exec.Command("sh", "-c",
+		"(cd "+git_dir+"&& git archive --prefix="+
+			url_base+"-"+after+"/ "+after+
+			") | tar xvf -")
+	archive.Stderr = os.Stderr
+	err = archive.Run()
+	check(err)
+	log.Println("Created", prefix_dir)
 }
