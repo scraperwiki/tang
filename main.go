@@ -9,6 +9,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
+	"path"
 	"strings"
 )
 
@@ -104,6 +106,29 @@ func handleHook(w http.ResponseWriter, r *http.Request) {
 		after := doc["after"].(string)
 
 		log.Println("Push to", url, ref, "after", after)
+
+		clone := exec.Command("git", "clone", "--mirror", url)
+		clone.Stdout = os.Stdout
+		clone.Stderr = os.Stderr
+		err = clone.Run()
+		if err == nil {
+			log.Println("Cloned", url)
+		} else if _, ok := err.(*exec.ExitError); ok {
+			// Try "git remote update"
+			dir := path.Base(url)
+			if !strings.HasSuffix(dir, ".git") {
+				dir = dir + ".git"
+			}
+			remote := exec.Command("sh", "-c",
+				"cd "+dir+" && git remote update")
+			remote.Stdout = os.Stdout
+			remote.Stderr = os.Stderr
+			err = remote.Run()
+			check(err)
+			log.Println("Remote updated", url)
+		} else {
+			check(err)
+		}
 
 	default:
 		log.Println("Unhandled event:", eventType)
