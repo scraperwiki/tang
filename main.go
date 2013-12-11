@@ -26,7 +26,7 @@ func main() {
 
 	configureHooks()
 
-	http.HandleFunc("/hook", handleRoot)
+	http.HandleFunc("/hook", handleHook)
 
 	log.Fatal(http.ListenAndServe(*address, nil))
 }
@@ -73,7 +73,7 @@ func configureHooks() {
 
 }
 
-func handleRoot(w http.ResponseWriter, r *http.Request) {
+func handleHook(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Hello, world!\n")
 
 	request, err := ioutil.ReadAll(r.Body)
