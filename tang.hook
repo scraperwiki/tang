@@ -10,6 +10,12 @@ then
 	exit 1
 fi
 
+if [[ "$(basename "$TANG_REF")" != "master" ]];
+then
+	echo "Not the master branch, won't deploy."
+	exit 0
+fi
+
 mkdir -p gopath/src
 ln -s $PWD gopath/src/tang
 
