@@ -4,16 +4,28 @@ set -e
 
 echo "Hello world"
 
-mkdir -p gopath/src
-ln -s $PWD gopath/src/tang
+if [[ -z "$TANG_TEST" ]]
+then
+	echo "Inside tang tests. Would have installed new version and sent HUP."
+else
+	if ! go test -v;
+	then
+		echo "Tests failed"
+		exit 1
+	fi
 
-echo "Installing..."
-GOPATH=$PWD/gopath go install tang
+	echo "Would have built tang"
+	exit 1
+	mkdir -p gopath/src
+	ln -s $PWD gopath/src/tang
 
-# Must delete old binary before replacing it
-ORIGBIN=${GOPATH-~/.local}/bin/tang
-mv $ORIGBIN $ORIGBIN.old
-cp $PWD/gopath/bin/tang $ORIGBIN
+	echo "Installing..."
+	GOPATH=$PWD/gopath go install tang
 
-echo "Sending HUP"
-pkill -HUP tang
+	# Must delete old binary before replacing it
+	ORIGBIN=${GOPATH-~/.local}/bin/tang
+	mv $ORIGBIN $ORIGBIN.old
+	cp $PWD/gopath/bin/tang $ORIGBIN
+
+	pkill -HUP tang
+fi
