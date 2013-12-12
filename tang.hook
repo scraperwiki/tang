@@ -2,13 +2,13 @@
 
 set -e
 
+echo "# tang.hook invoked at ${TANG_REF}"
+
 if ! go test -v;
 then
 	echo "Tests failed"
 	exit 1
 fi
-
-echo "Would have built tang"
 
 mkdir -p gopath/src
 ln -s $PWD gopath/src/tang
