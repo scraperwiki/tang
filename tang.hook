@@ -10,7 +10,10 @@ ln -s $PWD gopath/src/tang
 echo "Installing..."
 GOPATH=$PWD/gopath go install tang
 
-cp $PWD/gopath/bin/tang ${GOPATH-~/.local}/bin
+// Must delete old binary before replacing it
+ORIGBIN=${GOPATH-~/.local}/bin
+mv $ORIGBIN $ORIGBIN.old
+cp $PWD/gopath/bin/tang $ORIGBIN
 
 echo "Sending HUP"
 pkill -HUP tang
