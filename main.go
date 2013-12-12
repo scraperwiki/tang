@@ -50,7 +50,7 @@ func main() {
 
 	go func() {
 		http.HandleFunc("/hook", handleHook)
-		log.Println("Listening on:", *address)
+		log.Println("Listening on 1:", *address)
 		log.Fatal(http.ListenAndServe(*address, nil))
 	}()
 
