@@ -11,7 +11,7 @@ echo "Installing..."
 GOPATH=$PWD/gopath go install tang
 
 # Must delete old binary before replacing it
-ORIGBIN=${GOPATH-~/.local}/bin
+ORIGBIN=${GOPATH-~/.local}/bin/tang
 mv $ORIGBIN $ORIGBIN.old
 cp $PWD/gopath/bin/tang $ORIGBIN
 
