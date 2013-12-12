@@ -4,7 +4,7 @@ set -e
 
 echo "Hello world"
 
-if [[ -z "$TANG_TEST" ]]
+if [[ -n "$TANG_TEST" ]]
 then
 	echo "Inside tang tests. Would have installed new version and sent HUP."
 else
