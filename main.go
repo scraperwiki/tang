@@ -294,16 +294,17 @@ func runTang(repo, sha, path, ref string) (err error) {
 
 	if cmderr == nil {
 		// All OK, send along a green
-		updateStatus(repo, sha, GithubStatus{"success", "http://services.scraperwiki.com", "All OK"})
+		s := GithubStatus{"success", "http://services.scraperwiki.com", "All OK"}
+		updateStatus(repo, sha, s)
 
 		return
-	} else if err, ok := err.(*exec.ExitError); ok {
-		status := err.Sys().(syscall.WaitStatus).ExitStatus()
-		_ = status
-		// Not OK, send along red.
-		updateStatus(repo, sha, GithubStatus{"failure", "http://services.scraperwiki.com", "All OK"})
-
 	}
+	// else if err, ok := cmderr.(*exec.ExitError); ok {
+	// status := err.Sys().(syscall.WaitStatus).ExitStatus()
+	// _ = status
+	// Not OK, send along red.
+	s := GithubStatus{"failure", "http://services.scraperwiki.com", cmderr.Error()}
+	updateStatus(repo, sha, s)
 
 	return
 }
