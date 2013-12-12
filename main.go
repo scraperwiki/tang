@@ -71,8 +71,7 @@ func main() {
 
 func Endpoint(args ...string) string {
 	base := "https://" + github_user + ":" + github_password + "@" + "api.github.com"
-	log.Println("base =", base)
-	return path.Join(append([]string{base}, args...)...)
+	return base + path.Join(args...)
 }
 
 func Github(payload string, endpoint ...string) (respString string, resp *http.Response, err error) {
