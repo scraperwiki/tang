@@ -38,6 +38,10 @@ func check(err error) {
 
 func main() {
 
+	// Must read exe before the executable is replaced
+	exe, err := os.Readlink("/proc/self/exe")
+	check(err)
+
 	go func() {
 		http.HandleFunc("/hook", handleHook)
 		log.Println("Listening on:", *address)
@@ -52,9 +56,6 @@ func main() {
 	signal.Stop(sig)
 
 	log.Print("HUPPING!")
-
-	exe, err := os.Readlink("/proc/self/exe")
-	check(err)
 
 	err = syscall.Exec(exe, os.Args, os.Environ())
 	check(err)
