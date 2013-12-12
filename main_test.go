@@ -1,8 +1,16 @@
 package main
 
 import (
+	"os"
 	"testing"
 )
+
+func init() {
+	err := os.Setenv("TANG_TEST", "1")
+	if err != nil {
+		panic(err)
+	}
+}
 
 func TestPush(t *testing.T) {
 
