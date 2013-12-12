@@ -9,7 +9,6 @@ then
 fi
 
 echo "Would have built tang"
-exit 1
 
 mkdir -p gopath/src
 ln -s $PWD gopath/src/tang
