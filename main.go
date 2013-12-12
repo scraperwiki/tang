@@ -50,7 +50,7 @@ func main() {
 
 	go func() {
 		http.HandleFunc("/hook", handleHook)
-		log.Println("Listening on:", *address)
+		log.Println("Listening on 1:", *address)
 		log.Fatal(http.ListenAndServe(*address, nil))
 	}()
 
@@ -69,7 +69,7 @@ func main() {
 	check(err)
 }
 
-func Endpoint(args ...string) string {
+func Endpoint(args ...string) strig {
 	base := "https://" + github_user + ":" + github_password + "@" + "api.github.com/"
 	return base + path.Join(args...)
 }
