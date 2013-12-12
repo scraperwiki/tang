@@ -76,6 +76,16 @@ func configureHooks() {
 
 }
 
+type Repository struct {
+	Url string `json:"url"`
+}
+
+type PushEvent struct {
+	Ref        string `json:"ref"`
+	Repository Repository
+	After      string `json:"after"`
+}
+
 func handleHook(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Hello, world!\n")
 
@@ -89,17 +99,22 @@ func handleHook(w http.ResponseWriter, r *http.Request) {
 	dst.Reset()
 	err = json.Indent(&dst, request, "", "  ")
 	check(err)
+	data := dst.Bytes()
 
-	var doc_ interface{}
-	err = json.Unmarshal(dst.Bytes(), &doc_)
-	check(err)
-	doc := doc_.(map[string]interface{})
+	// var doc_ interface{}
+	// err = json.Unmarshal(dst.Bytes(), &doc_)
+	// check(err)
+	// doc := doc_.(map[string]interface{})
 
-	log.Println("Incoming request:", string(dst.Bytes()))
+	log.Println("Incoming request:", string(data))
 
 	switch eventType := r.Header["X-Github-Event"][0]; eventType {
 	case "push":
-		eventPush(doc)
+		var event PushEvent
+		err = json.Unmarshal(data, &event)
+		check(err)
+
+		eventPush(event)
 
 	default:
 		log.Println("Unhandled event:", eventType)
@@ -107,11 +122,11 @@ func handleHook(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func eventPush(doc map[string]interface{}) {
+func eventPush(event PushEvent) {
 	log.Println("Pushed")
-	ref := doc["ref"].(string)
-	url := doc["repository"].(map[string]interface{})["url"].(string)
-	after := doc["after"].(string)
+	ref := event.Ref
+	url := event.Repository.Url
+	after := event.After
 
 	log.Println("Push to", url, ref, "after", after)
 
@@ -123,25 +138,40 @@ func eventPush(doc map[string]interface{}) {
 	if !strings.HasSuffix(git_dir, ".git") {
 		git_dir = git_dir + ".git"
 	}
+
 	clone := exec.Command("git", "clone", "--mirror", url)
 	clone.Stdout = os.Stdout
 	clone.Stderr = os.Stderr
 	err := clone.Run()
+
 	if err == nil {
 		log.Println("Cloned", url)
+
 	} else if _, ok := err.(*exec.ExitError); ok {
+
 		// Try "git remote update"
-		remote := exec.Command("sh", "-c",
-			"cd "+git_dir+" && git remote update")
-		remote.Stdout = os.Stdout
-		remote.Stderr = os.Stderr
-		err = remote.Run()
-		check(err)
+		fetch := exec.Command("git", "fetch")
+		fetch.Dir = git_dir
+		fetch.Stdout = os.Stdout
+		fetch.Stderr = os.Stderr
+
+		err = fetch.Run()
+
+		if err != nil {
+			// git fetch where there is no update is exit status 1.
+			if err.Error() != "exit status 1" {
+				check(err)
+			}
+		}
+
 		log.Println("Remote updated", url)
+
 	} else {
 		check(err)
 	}
+
 	prefix_dir := url_base + "-" + after + "/"
+
 	log.Println("Creating", prefix_dir)
 	archive := exec.Command("sh", "-c",
 		"(cd "+git_dir+"&& git archive --prefix="+
@@ -150,5 +180,6 @@ func eventPush(doc map[string]interface{}) {
 	archive.Stderr = os.Stderr
 	err = archive.Run()
 	check(err)
+
 	log.Println("Created", prefix_dir)
 }
