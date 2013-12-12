@@ -57,6 +57,8 @@ func main() {
 
 	log.Print("HUPPING!")
 
+	log.Printf("My exe = %q", exe)
+
 	err = syscall.Exec(exe, os.Args, os.Environ())
 	check(err)
 }
