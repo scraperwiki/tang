@@ -70,7 +70,7 @@ func main() {
 }
 
 func Endpoint(args ...string) string {
-	base := "https://" + github_user + ":" + github_password + "@" + "api.github.com"
+	base := "https://" + github_user + ":" + github_password + "@" + "api.github.com/"
 	return base + path.Join(args...)
 }
 
