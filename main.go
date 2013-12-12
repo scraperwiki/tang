@@ -69,7 +69,7 @@ func main() {
 	check(err)
 }
 
-func Endpoint(args ...string) string {
+func Endpoint(args ...string) strig {
 	base := "https://" + github_user + ":" + github_password + "@" + "api.github.com/"
 	return base + path.Join(args...)
 }
