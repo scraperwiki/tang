@@ -150,6 +150,58 @@ var (
 	ErrEmptyRepoOrganization = errors.New("Empty repository organization")
 )
 
+// Creates or updates a mirror of `url` at `git_dir` using `git clone --mirror`
+func gitLocalMirror(url, git_dir string) (err error) {
+
+	err = os.MkdirAll(git_dir, 0777)
+	if err != nil {
+		return
+	}
+
+	err = Command(".", "git", "clone", "-q", "--mirror", url, git_dir).Run()
+
+	if err == nil {
+		log.Println("Cloned", url)
+
+	} else if _, ok := err.(*exec.ExitError); ok {
+
+		// Try "git remote update"
+		err = Command(git_dir, "git", "fetch").Run()
+
+		if err != nil {
+			// git fetch where there is no update is exit status 1.
+			if err.Error() != "exit status 1" {
+				return
+			}
+		}
+
+		log.Println("Remote updated", url)
+
+	} else {
+		return
+	}
+
+	return
+}
+
+func gitCheckout(git_dir, checkout_dir, ref string) (err error) {
+
+	err = os.MkdirAll(path.Join(git_dir, checkout_dir), 0777)
+	if err != nil {
+		return
+	}
+
+	log.Println("Populating", checkout_dir)
+
+	args := []string{"--work-tree", checkout_dir, "checkout", ref, "."}
+	err = Command(git_dir, "git", args...).Run()
+	if err != nil {
+		return
+	}
+
+	return
+}
+
 func eventPush(event PushEvent) (err error) {
 	if event.Repository.Name == "" {
 		return ErrEmptyRepoName
@@ -169,45 +221,18 @@ func eventPush(event PushEvent) (err error) {
 	// cloned yet).
 	git_dir := path.Join(GIT_BASE_DIR, event.Repository.Organization,
 		event.Repository.Name)
-
-	err = os.MkdirAll(git_dir, 0777)
-	check(err)
-
-	err = Command(".", "git", "clone", "-q", "--mirror", url, git_dir).Run()
-
-	if err == nil {
-		log.Println("Cloned", url)
-
-	} else if _, ok := err.(*exec.ExitError); ok {
-
-		// Try "git remote update"
-		err := Command(git_dir, "git", "fetch").Run()
-
-		if err != nil {
-			// git fetch where there is no update is exit status 1.
-			if err.Error() != "exit status 1" {
-				check(err)
-			}
-		}
-
-		log.Println("Remote updated", url)
-
-	} else {
-		check(err)
+	err = gitLocalMirror(url, git_dir)
+	if err != nil {
+		return
 	}
 
-	prefix_dir := path.Join("checkout", after)
+	checkout_dir := path.Join("checkout", after)
+	err = gitCheckout(git_dir, checkout_dir, after)
+	if err != nil {
+		return
+	}
 
-	err = os.MkdirAll(path.Join(git_dir, prefix_dir), 0777)
-	check(err)
-
-	log.Println("Populating", prefix_dir)
-
-	args := []string{"--work-tree", prefix_dir, "checkout", after, "."}
-	err = Command(git_dir, "git", args...).Run()
-	check(err)
-
-	log.Println("Created", prefix_dir)
+	log.Println("Created", checkout_dir)
 
 	return
 }
