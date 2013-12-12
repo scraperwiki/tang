@@ -127,6 +127,7 @@ type NonGithub struct {
 
 type PushEvent struct {
 	Ref        string     `json:"ref"`
+	Deleted    bool       `json:"deleted"`
 	Repository Repository `json:"repository"`
 	After      string     `json:"after"`
 	Pusher     Pusher     `json:"pusher"`
@@ -142,6 +143,12 @@ func handleEvent(eventType string, document []byte) (err error) {
 		var event PushEvent
 		err = json.Unmarshal(document, &event)
 		if err != nil {
+			return
+		}
+
+		if event.Deleted {
+			// When a branch is deleted we get a "push" event we don't care
+			// about (after = "0000")
 			return
 		}
 
