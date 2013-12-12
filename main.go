@@ -254,8 +254,10 @@ func gitCheckout(git_dir, checkout_dir, ref string) (err error) {
 	return
 }
 
-func runTang(path string) (err error) {
-	return Command(path, "./tang.hook").Run()
+func runTang(path, ref string) (err error) {
+	cmd := Command(path, "./tang.hook")
+	cmd.Env = append(os.Environ(), "TANG_REF="+ref)
+	return cmd.Run()
 }
 
 func eventPush(event PushEvent) (err error) {
@@ -299,7 +301,7 @@ func eventPush(event PushEvent) (err error) {
 		return
 	}
 
-	err = runTang(path.Join(git_dir, checkout_dir))
+	err = runTang(path.Join(git_dir, checkout_dir), event.Ref)
 	if err != nil {
 		return
 	}
