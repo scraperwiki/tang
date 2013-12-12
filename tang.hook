@@ -1,0 +1,14 @@
+#! /bin/bash
+
+set -e
+
+echo "Hello world"
+
+mkdir -p gopath/src
+ln -s $PWD gopath/src/tang
+
+echo "Installing..."
+GOPATH=$PWD/gopath go install tang
+
+echo "Sending HUP"
+pkill -HUP tang

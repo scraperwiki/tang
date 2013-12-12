@@ -11,12 +11,24 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path"
 	"strings"
+	"syscall"
 )
 
 var address = flag.String("address", ":8080", "address to listen on")
 var repositories = flag.String("repositories", "scraperwiki/tang", "colon separated list of repositories to watch")
+var allowedPushers = flag.String("allowed-pushers", "drj11:pwaller", "list of people allowed")
+
+var allowedPushersSet = map[string]bool{}
+
+func init() {
+	flag.Parse()
+	for _, who := range strings.Split(*allowedPushers, ":") {
+		allowedPushersSet[who] = true
+	}
+}
 
 func check(err error) {
 	if err != nil {
@@ -25,17 +37,35 @@ func check(err error) {
 }
 
 func main() {
-	flag.Parse()
+
+	go func() {
+		http.HandleFunc("/hook", handleHook)
+		log.Println("Listening on:", *address)
+		log.Fatal(http.ListenAndServe(*address, nil))
+	}()
 
 	configureHooks()
 
-	http.HandleFunc("/hook", handleHook)
+	sig := make(chan os.Signal)
+	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT)
+	<-sig
+	signal.Stop(sig)
 
-	log.Println("Listening on:", *address)
-	log.Fatal(http.ListenAndServe(*address, nil))
+	log.Print("HUPPING!")
+
+	exe, err := os.Readlink("/proc/self/exe")
+	check(err)
+
+	err = syscall.Exec(exe, os.Args, os.Environ())
+	check(err)
 }
 
 func configureHooks() {
+
+	if *repositories == "" {
+		return
+	}
+
 	github_user := os.Getenv("GITHUB_USER")
 	github_password := os.Getenv("GITHUB_PASSWORD")
 
@@ -56,6 +86,7 @@ func configureHooks() {
 	repos := strings.Split(*repositories, ":")
 
 	for _, repo := range repos {
+		log.Print("Repo: ", repo)
 
 		buffer := strings.NewReader(json)
 		resp, err := http.Post(endpoint+"/repos/"+repo+"/hooks", "application/json", buffer)
@@ -83,10 +114,15 @@ type Repository struct {
 	Organization string `json:"organization"`
 }
 
+type Pusher struct {
+	Name string `json:"name"`
+}
+
 type PushEvent struct {
 	Ref        string     `json:"ref"`
 	Repository Repository `json:"repository"`
 	After      string     `json:"after"`
+	Pusher     Pusher     `json:"pusher"`
 }
 
 func handleEvent(eventType string, document []byte) (err error) {
@@ -148,6 +184,7 @@ const GIT_BASE_DIR = "repo"
 var (
 	ErrEmptyRepoName         = errors.New("Empty repository name")
 	ErrEmptyRepoOrganization = errors.New("Empty repository organization")
+	ErrUserNotAllowed        = errors.New("User not in the allowed set")
 )
 
 // Creates or updates a mirror of `url` at `git_dir` using `git clone --mirror`
@@ -202,12 +239,22 @@ func gitCheckout(git_dir, checkout_dir, ref string) (err error) {
 	return
 }
 
+func runTang(path string) (err error) {
+	return Command(path, "./tang.hook").Run()
+}
+
 func eventPush(event PushEvent) (err error) {
 	if event.Repository.Name == "" {
 		return ErrEmptyRepoName
 	}
+
 	if event.Repository.Organization == "" {
 		return ErrEmptyRepoOrganization
+	}
+
+	if _, ok := allowedPushersSet[event.Pusher.Name]; !ok {
+		log.Printf("Ignoring %q, not allowed", event.Pusher.Name)
+		return ErrUserNotAllowed
 	}
 
 	ref := event.Ref
@@ -231,8 +278,12 @@ func eventPush(event PushEvent) (err error) {
 	if err != nil {
 		return
 	}
-
 	log.Println("Created", checkout_dir)
+
+	err = runTang(path.Join(git_dir, checkout_dir))
+	if err != nil {
+		return
+	}
 
 	return
 }
