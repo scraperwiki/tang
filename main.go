@@ -171,7 +171,7 @@ func handleHook(w http.ResponseWriter, r *http.Request) {
 }
 
 func Command(workdir, command string, args ...string) *exec.Cmd {
-	// log.Printf("wd = %s cmd = %s, args = %q", workdir, command, append([]string{}, args...))
+	log.Printf("wd = %s cmd = %s, args = %q", workdir, command, append([]string{}, args...))
 	cmd := exec.Command(command, args...)
 	cmd.Dir = workdir
 	cmd.Stdout = os.Stdout
