@@ -121,11 +121,16 @@ type Pusher struct {
 	Name string `json:"name"`
 }
 
+type NonGithub struct {
+	NoBuild bool `json:"nobuild"`
+}
+
 type PushEvent struct {
 	Ref        string     `json:"ref"`
 	Repository Repository `json:"repository"`
 	After      string     `json:"after"`
 	Pusher     Pusher     `json:"pusher"`
+	NonGithub  NonGithub  `json:"nongithub"`
 }
 
 func handleEvent(eventType string, document []byte) (err error) {
@@ -282,6 +287,10 @@ func eventPush(event PushEvent) (err error) {
 		return
 	}
 	log.Println("Created", checkout_dir)
+
+	if event.NonGithub.NoBuild {
+		return
+	}
 
 	err = runTang(path.Join(git_dir, checkout_dir))
 	if err != nil {

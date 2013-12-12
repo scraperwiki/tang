@@ -21,8 +21,9 @@ func TestPush(t *testing.T) {
 			Organization: "example",
 			Url:          ".",
 		},
-		After:  "HEAD",
-		Pusher: Pusher{Name: "testuser"},
+		After:     "HEAD",
+		Pusher:    Pusher{Name: "testuser"},
+		NonGithub: NonGithub{NoBuild: true},
 	}
 	allowedPushersSet["testuser"] = true
 	defer delete(allowedPushersSet, "testuser")
@@ -39,7 +40,8 @@ func TestEvent(t *testing.T) {
 		"ref": "refs/heads/master",
 		"repository": {"name": "tang", "organization": "example", "url": "."},
 		"after": "HEAD",
-		"pusher": {"name":"testuser"}
+		"pusher": {"name":"testuser"},
+		"nongithub": {"nobuild": true}
 		}`))
 
 	if err != nil {
