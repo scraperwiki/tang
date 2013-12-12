@@ -10,5 +10,7 @@ ln -s $PWD gopath/src/tang
 echo "Installing..."
 GOPATH=$PWD/gopath go install tang
 
+cp $PWD/gopath/bin/tang ${GOPATH-~/.local}/bin
+
 echo "Sending HUP"
 pkill -HUP tang
