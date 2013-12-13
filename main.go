@@ -284,7 +284,9 @@ func handleHook(w http.ResponseWriter, r *http.Request) {
 	if !j.NonGithub.Wait {
 		go func() {
 			err := handleEvent(eventType, data)
-			check(err) // nowhere for the error to go, just dump a trace for now.
+			if err != nil {
+				log.Printf("Error processing %v %v %q", eventType, string(data), err)
+			}
 		}()
 
 		w.WriteHeader(http.StatusOK)
