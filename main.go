@@ -300,9 +300,8 @@ func eventPush(event PushEvent) (err error) {
 		return
 	}
 
-	// Checkout the target sha
-	// TODO(pwaller): Use only first six characters
-	checkout_dir := path.Join("checkout", event.After)
+	// Checkout the target sha (only use 6 characters of sha)
+	checkout_dir := path.Join("checkout", event.After[:6])
 	err = gitCheckout(git_dir, checkout_dir, event.After)
 	if err != nil {
 		return
