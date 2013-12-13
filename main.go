@@ -97,13 +97,22 @@ func main() {
 	l, err := getListener(*address)
 	check(err)
 
+	err = os.MkdirAll("logs/", 0777)
+	check(err)
+
 	go func() {
 		http.HandleFunc("/hook", handleHook)
+
+		http.Handle("/tang/logs/", http.FileServer(http.Dir("logs/")))
+		// http.Handle(pattern, handler)
+
+		// Drop privileges just before serving
 		if *uid != 0 {
 			log.Println("Setting UID =", *uid)
 			err = syscall.Setreuid(*uid, *uid)
 			check(err)
 		}
+
 		err = http.Serve(l, nil)
 		log.Fatal(err)
 	}()
@@ -234,10 +243,19 @@ func Command(workdir, command string, args ...string) *exec.Cmd {
 	return cmd
 }
 
-func runTang(repo, sha, path, ref string) (err error) {
+func runTang(repo, sha, repo_path, ref string) (err error) {
 
-	cmd := Command(path, "./tang.hook")
-	cmd.Env = append(os.Environ(), "TANG_REF="+ref)
+	c := `D=$TANG_LOGDIR/$TANG_REF/log; ./tang.hook |& tee $D/log.txt`
+	cmd := Command(repo_path, "bash", "-c", c)
+
+	pwd, err := os.Getwd()
+	if err != nil {
+		err = fmt.Errorf("runTang/getwd %q", err)
+		return
+	}
+
+	logdir := path.Join(pwd, "logs/")
+	cmd.Env = append(os.Environ(), "TANG_REF="+ref, "TANG_LOGDIR="+logdir)
 	cmderr := cmd.Run()
 
 	if cmderr == nil {
