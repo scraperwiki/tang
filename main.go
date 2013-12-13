@@ -85,39 +85,9 @@ func getListener(address string) (l net.Listener, err error) {
 	return
 }
 
-func main() {
-	// Start catching signals early.
-	sig := make(chan os.Signal)
-	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT)
-
-	// Must read exe before the executable is replaced
-	exe, err := os.Readlink("/proc/self/exe")
-	check(err)
-
-	l, err := getListener(*address)
-	check(err)
-
-	err = os.MkdirAll("logs/", 0777)
-	check(err)
-
-	go func() {
-		http.HandleFunc("/hook", handleHook)
-
-		http.Handle("/tang/logs/", http.FileServer(http.Dir("logs/")))
-		// http.Handle(pattern, handler)
-
-		// Drop privileges just before serving
-		if *uid != 0 {
-			log.Println("Setting UID =", *uid)
-			err = syscall.Setreuid(*uid, *uid)
-			check(err)
-		}
-
-		err = http.Serve(l, nil)
-		log.Fatal(err)
-	}()
-
-	go func() {
+// Since CTRL-C is used for a reload, it's nice to have a way to exit (CTRL-D).
+func ExitOnEOF() {
+	func() {
 		buf := make([]byte, 64*1024)
 		for {
 			_, err := os.Stdin.Read(buf)
@@ -127,30 +97,86 @@ func main() {
 			}
 		}
 	}()
+}
 
+func ServeHTTP() {
+	// Expose logs directory
+	pwd, err := os.Getwd()
+	check(err)
+	handler := http.FileServer(http.Dir(pwd + "logs"))
+	http.Handle("/tang/logs", http.StripPrefix("/tang/logs", handler))
+
+	// Github hook handler
+	http.HandleFunc("/hook", handleHook)
+
+	err = http.Serve(l, nil)
+	log.Fatal(err)
+}
+
+func main() {
+	// Start catching signals early.
+	sig := make(chan os.Signal)
+	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT)
+
+	l, err := getListener(*address)
+	check(err)
+
+	// Drop privileges immediately after getting socket
+	if *uid != 0 {
+		log.Println("Setting UID =", *uid)
+		err = syscall.Setreuid(*uid, *uid)
+		check(err)
+	}
+
+	// Must read exe before the executable is replaced
+	exe, err := os.Readlink("/proc/self/exe")
+	check(err)
+
+	// Make somewhere to put our logs
+	err = os.MkdirAll("logs/", 0777)
+	check(err)
+
+	go ServeHTTP()
+
+	// Set up github hooks
 	configureHooks()
 
+	// Tell the user how to quit
+	if IsTerminal(os.Stdin.Fd()) {
+		log.Println("Hello, terminal user. CTRL-D (EOF) to exit.")
+		go ExitOnEOF()
+	} else {
+		log.Println("Send me SIGQUIT to exit.")
+	}
+
+	// Wait for a signal listed in `signal.Notify(sig, ...)`
 	value := <-sig
 	signal.Stop(sig)
 
-	log.Printf("Recieved %v, restarting", value)
+	// We've been instructed to exit.
+	log.Printf("Recieved %v, restarting...", value)
 
 	// TODO(pwaller) Don't exec before everything else has finished.
 	// OTOH, that means waiting for other cruft in the pipeline, which
 	// might cause a significant delay.
 	// Maybe the process we exec to can wait on the children?
 	// This is probably very tricky to get right without delaying the exec.
+	// How do we find our children? Might involve iterating through /proc.
 
 	err = syscall.Exec(exe, os.Args, os.Environ())
 	check(err)
 }
 
+// Set up github hooks so that it notifies us for any chances to repositories
+// we care about
 func configureHooks() {
 
 	if *repositories == "" {
 		return
 	}
 
+	// JSON payload for github
+	// http://developer.github.com/v3/repos/hooks/#json-http
 	json := `{
 	"name": "web",
 	"config": {"url": "http://services.scraperwiki.com/hook",
@@ -163,6 +189,7 @@ func configureHooks() {
 	"active": true
 	}`
 
+	// Each of the repositories listed on the command line
 	repos := strings.Split(*repositories, ":")
 
 	for _, repo := range repos {
@@ -180,6 +207,8 @@ func configureHooks() {
 
 }
 
+// This function is called whenever an event happens on github.
+// Valid event types are
 func handleEvent(eventType string, document []byte) (err error) {
 
 	// log.Println("Incoming request:", string(document))
@@ -193,7 +222,7 @@ func handleEvent(eventType string, document []byte) (err error) {
 			return
 		}
 
-		log.Println("Received PushEvent %#+v", event)
+		log.Printf("Received PushEvent %#+v", event)
 
 		if event.Deleted {
 			// When a branch is deleted we get a "push" event we don't care
@@ -213,8 +242,16 @@ func handleEvent(eventType string, document []byte) (err error) {
 	return
 }
 
+// HTTP handler for /hook
+// It is expecting a POST with a JSON payload according to
+// http://developer.github.com/v3/activity/events/
 func handleHook(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "OK\n")
+
+	if r.Method != "POST" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		fmt.Fprintf(w, "Expected JSON POST payload.\n")
+		return
+	}
 
 	request, err := ioutil.ReadAll(r.Body)
 	check(err)
@@ -225,13 +262,20 @@ func handleHook(w http.ResponseWriter, r *http.Request) {
 	// buf.Reset()
 
 	err = json.Indent(&buf, request, "", "  ")
-	check(err)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Expected JSON POST payload.\n")
+		log.Println("No JSON payload. NOOP.")
+		return
+	}
 
 	eventType := r.Header["X-Github-Event"][0]
 	data := buf.Bytes()
 
 	err = handleEvent(eventType, data)
 	check(err)
+
+	fmt.Fprintf(w, "OK\n")
 }
 
 func Command(workdir, command string, args ...string) *exec.Cmd {
@@ -243,7 +287,10 @@ func Command(workdir, command string, args ...string) *exec.Cmd {
 	return cmd
 }
 
+// Invoked when a respository we are watching changes
 func runTang(repo, sha, repo_path, ref string) (err error) {
+
+	// TODO(pwaller): determine lack of tang.hook?
 
 	c := `D=$TANG_LOGDIR/$TANG_REF/log; ./tang.hook |& tee $D/log.txt`
 	cmd := Command(repo_path, "bash", "-c", c)
@@ -275,6 +322,7 @@ func runTang(repo, sha, repo_path, ref string) (err error) {
 	return
 }
 
+// Invoked when there is a push event to github.
 func eventPush(event PushEvent) (err error) {
 	if event.Repository.Name == "" {
 		return ErrEmptyRepoName
@@ -291,6 +339,8 @@ func eventPush(event PushEvent) (err error) {
 
 	gh_repo := path.Join(event.Repository.Organization, event.Repository.Name)
 
+	// Set the state of the commit to "in progress" (seen as yellowe in
+	// a github pull request)
 	status := GithubStatus{"pending", "http://services.scraperwiki.com", "Running"}
 	updateStatus(gh_repo, event.After, status)
 
@@ -307,8 +357,12 @@ func eventPush(event PushEvent) (err error) {
 		return
 	}
 
-	// Checkout the target sha (only use 6 characters of sha)
-	checkout_dir := path.Join("checkout", event.After[:6])
+	// Only use 6 characters of sha for the name of the
+	// directory checked out for this repository by tang.
+	short_sha = event.After[:6]
+	checkout_dir := path.Join("checkout", short_sha)
+
+	// Checkout the target sha
 	err = gitCheckout(git_dir, checkout_dir, event.After)
 	if err != nil {
 		return
@@ -317,12 +371,12 @@ func eventPush(event PushEvent) (err error) {
 	log.Println("Created", checkout_dir)
 
 	if event.NonGithub.NoBuild {
-		// Bail out. This is here so that the tests can avoid running
-		// themselves.
+		// Bail out. This is here so that the tests
+		// can avoid running themselves.
 		return
 	}
 
-	// Run the tang script
+	// Run the tang script for the repository, if there is one.
 	repo_workdir := path.Join(git_dir, checkout_dir)
 	err = runTang(gh_repo, event.After, repo_workdir, event.Ref)
 	if err != nil {
