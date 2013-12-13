@@ -27,6 +27,9 @@ var (
 	github_user, github_password string
 
 	allowedPushersSet = map[string]bool{}
+
+	// Populated by `go install -ldflags '-X tangRev asdf -X tangDate asdf'
+	tangRev, tangDate string
 )
 
 func init() {
@@ -126,7 +129,7 @@ func ServeHTTP(l net.Listener) {
 }
 
 func main() {
-	log.Println("Starting")
+	log.Println("Starting", tangRev[:4], "committed", tangDate)
 	// Get the socket quickly so we can drop privileges ASAP
 	l, err := getListener(*address)
 	check(err)
