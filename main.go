@@ -119,7 +119,7 @@ func ServeHTTP(l net.Listener) {
 	logDir := path.Join(pwd, "logs")
 	handler := http.FileServer(F{http.Dir(logDir)})
 	log.Println("Serving logs at", logDir)
-	http.Handle("/tang/logs", http.StripPrefix("/tang/logs", handler))
+	http.Handle("/tang/logs/", http.StripPrefix("/tang/logs/", handler))
 
 	// Github hook handler
 	http.HandleFunc("/hook", handleHook)
