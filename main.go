@@ -99,7 +99,7 @@ func ExitOnEOF() {
 	}()
 }
 
-func ServeHTTP() {
+func ServeHTTP(l net.Listener) {
 	// Expose logs directory
 	pwd, err := os.Getwd()
 	check(err)
@@ -114,10 +114,7 @@ func ServeHTTP() {
 }
 
 func main() {
-	// Start catching signals early.
-	sig := make(chan os.Signal)
-	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT)
-
+	// Get the socket quickly so we can drop privileges ASAP
 	l, err := getListener(*address)
 	check(err)
 
@@ -128,6 +125,10 @@ func main() {
 		check(err)
 	}
 
+	// Start catching signals early.
+	sig := make(chan os.Signal)
+	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT)
+
 	// Must read exe before the executable is replaced
 	exe, err := os.Readlink("/proc/self/exe")
 	check(err)
@@ -136,7 +137,7 @@ func main() {
 	err = os.MkdirAll("logs/", 0777)
 	check(err)
 
-	go ServeHTTP()
+	go ServeHTTP(l)
 
 	// Set up github hooks
 	configureHooks()
@@ -269,11 +270,22 @@ func handleHook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(r.Header["X-Github-Event"]) != 1 {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Expected X-Github-Event header.\n")
+		log.Println("No X-Github-Event header. NOOP")
+		return
+	}
 	eventType := r.Header["X-Github-Event"][0]
 	data := buf.Bytes()
 
 	err = handleEvent(eventType, data)
-	check(err)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Error handling event: %q\n", err)
+		log.Printf("Error handling event: %q", err)
+		return
+	}
 
 	fmt.Fprintf(w, "OK\n")
 }
@@ -359,7 +371,7 @@ func eventPush(event PushEvent) (err error) {
 
 	// Only use 6 characters of sha for the name of the
 	// directory checked out for this repository by tang.
-	short_sha = event.After[:6]
+	short_sha := event.After[:6]
 	checkout_dir := path.Join("checkout", short_sha)
 
 	// Checkout the target sha
