@@ -1,5 +1,6 @@
 #! /bin/bash
 
+echo LOGDIR=$TANG_LOGDIR
 set -e
 
 echo "# tang.hook invoked at ${TANG_REF}"

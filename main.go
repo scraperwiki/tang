@@ -318,11 +318,11 @@ func runTang(repo, sha, repo_path, ref, logDir string) (err error) {
 
 	// TODO(pwaller): determine lack of tang.hook?
 
-	c := `D=$TANG_LOGDIR/$TANG_SHA; mkdir -p $D; ./tang.hook |& tee $D/log.txt`
+	c := `./tang.hook |& tee $TANG_LOGDIR/log.txt`
 	cmd := Command(repo_path, "bash", "-c", c)
 
 	cmd.Env = append(os.Environ(),
-		"TANG_SHA="+sha, "TANG_REF="+ref, "TANG_LOG="+logDir)
+		"TANG_SHA="+sha, "TANG_REF="+ref, "TANG_LOGDIR="+logDir)
 	err = cmd.Run()
 
 	return
@@ -356,7 +356,7 @@ func eventPush(event PushEvent) (err error) {
 		return
 	}
 
-	logPath := path.Join("logs/", checkout_dir, "log.txt")
+	logPath := path.Join("logs", short_sha, "log.txt")
 	fullLogPath := path.Join(pwd, logPath)
 
 	// TODO(pwaller): One day this will have more information, e.g, QA link.
