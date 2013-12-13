@@ -1,5 +1,6 @@
 #! /bin/bash
 
+echo LOGDIR=$TANG_LOGDIR
 set -e
 
 echo "# tang.hook invoked at ${TANG_REF}"
@@ -17,7 +18,7 @@ then
 fi
 
 mkdir -p gopath/src
-ln -s $PWD gopath/src/tang
+ln -sf $PWD gopath/src/tang
 
 echo "Installing..."
 GOPATH=$PWD/gopath go install tang

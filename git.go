@@ -34,6 +34,16 @@ type Pusher struct {
 
 type NonGithub struct {
 	NoBuild bool `json:"nobuild"`
+	Wait    bool `json:"wait"`
+}
+
+type JustNongithub struct {
+	NonGithub NonGithub `json:"nongithub"`
+}
+
+func ParseJustNongithub(in []byte) (j JustNongithub, err error) {
+	err = json.Unmarshal(in, &j)
+	return
 }
 
 type PushEvent struct {
@@ -71,7 +81,7 @@ func Github(payload string, endpoint ...string) (respString string, resp *http.R
 		return
 	}
 
-	log.Println("Querying ", url)
+	log.Println("Querying", url)
 	log.Println("Rate Limit:", resp.Header["X-Ratelimit-Remaining"][0])
 
 	return string(response), resp, err
@@ -79,6 +89,10 @@ func Github(payload string, endpoint ...string) (respString string, resp *http.R
 
 // curl -d '{"state": "success", "target_url": "https://deleteme.pwaller.qa.scraperwiki.com/", "description": "Tests pass, deleteme.pwaller.qa.scraperwiki.com up"}' https://scraperwiki-salt:fe236ee1c96a3fcc5dd14047b3d35651ff9b919d@api.github.com/repos/scraperwiki/custard/statuses/c8e3e81f13ce73de42364fd61aae1216b5dc2b69
 func updateStatus(repo, sha string, githubStatus GithubStatus) {
+	if github_user == "" {
+		log.Println("github_user not specified, not sending status update")
+		return
+	}
 	bytes, err := json.Marshal(githubStatus)
 	check(err)
 	Github(string(bytes), "repos", repo, "statuses", sha)

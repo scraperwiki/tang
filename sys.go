@@ -1,11 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"reflect"
 	"runtime"
 	"syscall"
+	"unsafe"
 )
 
 // Obtain FD # without duping it. (naughty, but what are you going to do..)
@@ -55,4 +57,31 @@ func showfds() {
 	cmd := Command(".", "ls", "-l", "/proc/"+self+"/fd")
 	err = cmd.Run()
 	check(err)
+}
+
+// Keepalive is necessary otherwise go's use of SetFinalizer will .close() the
+// file descriptors for us, which we don't want.
+var keepalive = []*os.File{}
+
+// Inherit a file descriptor from the process pre-fork.
+// Linux only, uses /proc to find out what to call the descriptor.
+// TODO(pwaller): This is probably un-necessary.
+func InheritFd(fd uintptr) (file *os.File, err error) {
+	fd_name, err := os.Readlink(fmt.Sprintf("/proc/self/fd/%d", fd))
+	if err != nil {
+		return
+	}
+	file = os.NewFile(fd, fd_name)
+	keepalive = append(keepalive, file)
+	return
+}
+
+// IsTerminal returns true if the given file descriptor is a terminal.
+// Shamelessly stolen from go.crypto
+func IsTerminal(fd uintptr) bool {
+	const ioctlReadTermios = syscall.TCGETS
+	var termios syscall.Termios
+	_, _, err := syscall.Syscall6(syscall.SYS_IOCTL, fd,
+		ioctlReadTermios, uintptr(unsafe.Pointer(&termios)), 0, 0, 0)
+	return err == 0
 }
