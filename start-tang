@@ -20,11 +20,7 @@ fi
 mkdir -p /usr/src/github.com/scraperwiki
 ln -s /tang /usr/src/github.com/scraperwiki/tang
 
-echo "Building tang..."
-V="$(git rev-parse HEAD)"
-D="$(git log -1 --pretty="%ci")"
-
-go install -v -ldflags "-X main.tangRev $V -X main.tangDate '$D'" github.com/scraperwiki/tang
+./install-tang
 
 echo "Running tang..."
 exec tang "$@"
