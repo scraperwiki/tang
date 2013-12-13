@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"reflect"
@@ -55,4 +56,18 @@ func showfds() {
 	cmd := Command(".", "ls", "-l", "/proc/"+self+"/fd")
 	err = cmd.Run()
 	check(err)
+}
+
+// Keepalive is necessary otherwise go's use of SetFinalizer will .close() the
+// file descriptors for us, which we don't want.
+var keepalive = []*os.File{}
+
+func InheritFd(fd uintptr) (file *os.File, err error) {
+	fd_name, err := os.Readlink(fmt.Sprintf("/proc/self/fd/%d", fd))
+	if err != nil {
+		return
+	}
+	file = os.NewFile(fd, fd_name)
+	keepalive = append(keepalive, file)
+	return
 }

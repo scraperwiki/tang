@@ -44,20 +44,6 @@ func check(err error) {
 	}
 }
 
-// Keepalive is necessary otherwise go's use of SetFinalizer will .close() the
-// file descriptors for us, which we don't want.
-var keepalive = []*os.File{}
-
-func InheritFd(fd uintptr) (file *os.File, err error) {
-	fd_name, err := os.Readlink(fmt.Sprintf("/proc/self/fd/%d", fd))
-	if err != nil {
-		return
-	}
-	file = os.NewFile(fd, fd_name)
-	keepalive = append(keepalive, file)
-	return
-}
-
 // Obtain listener by either taking it from `TANG_LISTEN_FD` if set, or
 // net.Listen otherwise.
 func getListener(address string) (l net.Listener, err error) {

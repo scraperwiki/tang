@@ -71,7 +71,7 @@ func Github(payload string, endpoint ...string) (respString string, resp *http.R
 		return
 	}
 
-	log.Println("Querying ", url)
+	log.Println("Querying", url)
 	log.Println("Rate Limit:", resp.Header["X-Ratelimit-Remaining"][0])
 
 	return string(response), resp, err
