@@ -50,3 +50,21 @@ func TestEvent(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+func TestAccess(t *testing.T) {
+	allowedPushersSet["testuser"] = true
+	defer delete(allowedPushersSet, "testuser")
+
+	err := handleEvent("push", []byte(`{
+		"ref": "refs/heads/master",
+		"repository": {"name": "tang", "organization": "example", "url": "."},
+		"after": "HEAD",
+		"pusher": {"name":"testeviluser"},
+		"nongithub": {"nobuild": true}
+		}`))
+
+	if err != ErrUserNotAllowed {
+		t.Error("User wasn't denied access! ", err)
+	}
+
+}
