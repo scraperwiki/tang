@@ -131,20 +131,22 @@ func main() {
 	l, err := getListener(*address)
 	check(err)
 
+	// Must read exe before the executable is replaced by deployment
+	// Must also read exe link before Setuid since we lose the privilege of
+	// reading it.
+	exe, err := os.Readlink("/proc/self/exe")
+	check(err)
+
 	// Drop privileges immediately after getting socket
 	if *uid != 0 {
 		log.Println("Setting UID =", *uid)
-		err = syscall.Setreuid(*uid, *uid)
+		err = syscall.Setuid(*uid)
 		check(err)
 	}
 
 	// Start catching signals early.
 	sig := make(chan os.Signal)
 	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT)
-
-	// Must read exe before the executable is replaced
-	exe, err := os.Readlink("/proc/self/exe")
-	check(err)
 
 	// Make somewhere to put our logs
 	err = os.MkdirAll("logs/", 0777)
