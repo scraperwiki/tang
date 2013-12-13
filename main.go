@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net"
@@ -77,12 +78,12 @@ func getListener(address string) (l net.Listener, err error) {
 		return
 	}
 
-	log.Println("Making new listener")
 	l, err = net.Listen("tcp4", address)
 	if err != nil {
 		err = fmt.Errorf("unable to listen: %q", err)
 		return
 	}
+	log.Println("Listening on:", address)
 
 	fd = GetFd(l)
 	err = noCloseOnExec(fd)
@@ -103,15 +104,12 @@ func main() {
 	sig := make(chan os.Signal)
 	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT)
 
-	log.Println("Started.")
-
 	// Must read exe before the executable is replaced
 	exe, err := os.Readlink("/proc/self/exe")
 	check(err)
 
 	l, err := getListener(*address)
 	check(err)
-	log.Println("Listening on:", *address)
 
 	go func() {
 		http.HandleFunc("/hook", handleHook)
@@ -124,12 +122,23 @@ func main() {
 		log.Fatal(err)
 	}()
 
+	go func() {
+		buf := make([]byte, 64*1024)
+		for {
+			_, err := os.Stdin.Read(buf)
+			if err == io.EOF {
+				log.Println("EOF, bye!")
+				os.Exit(0)
+			}
+		}
+	}()
+
 	configureHooks()
 
-	<-sig
+	value := <-sig
 	signal.Stop(sig)
 
-	log.Print("HUPPING!")
+	log.Printf("Recieved %v, restarting", value)
 
 	// TODO(pwaller) Don't exec before everything else has finished.
 	// OTOH, that means waiting for other cruft in the pipeline, which
