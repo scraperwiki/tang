@@ -17,7 +17,7 @@ then
 fi
 
 mkdir -p gopath/src
-ln -s $PWD gopath/src/tang
+ln -sf $PWD gopath/src/tang
 
 echo "Installing..."
 GOPATH=$PWD/gopath go install tang
