@@ -64,6 +64,10 @@ func main() {
 
 	log.Printf("My exe = %q", exe)
 
+	// TODO(pwaller) Don't exec before everything else has finished.
+	// OTOH, that means waiting for other cruft in the pipeline, which
+	// might cause a significant delay.
+	// Maybe the process we exec to can wait on the children?
 	err = syscall.Exec(exe, os.Args, os.Environ())
 	check(err)
 }
