@@ -1,0 +1,26 @@
+#! /bin/bash
+set -e
+
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [[ "$(dirname "$DIR")" != "/" ]] || [[ "${TANG_INSIDE_DOCKER-}" == "" ]];
+then
+    # Not inside a tang container.
+    ARGS=()
+    ARGS+=(-i -t)                     # Interactive, terminal
+    ARGS+=(-p 127.0.0.1:8080:8080)    # Poke hole
+    ARGS+=(-v $DIR:/tang)             # Mount $PWD into /tang
+    ARGS+=(-e TANG_INSIDE_DOCKER=YES) # So that we don't recurse
+
+    docker run "${ARGS[@]}" tang
+    exit 0
+fi
+
+# So that go install can find it
+mkdir -p /usr/src/github.com/scraperwiki
+ln -s /tang /usr/src/github.com/scraperwiki/tang
+
+./install-tang
+
+echo "Running tang..."
+exec tang "$@"

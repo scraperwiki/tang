@@ -119,7 +119,13 @@ func ServeHTTP(l net.Listener) {
 }
 
 func main() {
-	log.Println("Starting", tangRev[:4], "committed", tangDate)
+	if tangRev == "" {
+		log.Println("tangRev and tangDate unavailable.")
+		log.Println("Use install-tang script if you want build date/version")
+	} else {
+		log.Println("Starting", tangRev[:4], "committed", tangDate)
+	}
+
 	// Get the socket quickly so we can drop privileges ASAP
 	l, err := getListener(*address)
 	check(err)
