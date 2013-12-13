@@ -20,8 +20,9 @@ fi
 mkdir -p gopath/src
 ln -sf $PWD gopath/src/tang
 
-echo "Installing..."
-GOPATH=$PWD/gopath go install tang
+# echo "Installing..."
+# GOPATH=$PWD/gopath go install tang
+GOPATH=$PWD/gopath ./install-tang
 
 # Must delete old binary before replacing it
 ORIGBIN=${GOPATH-~/.local}/bin/tang

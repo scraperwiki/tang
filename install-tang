@@ -1,0 +1,8 @@
+#! /bin/bash
+
+V="$(git rev-parse HEAD)"
+D="$(git log -1 --pretty="%ci")"
+
+LDFLAGS="-X main.tangRev $V -X main.tangDate '$D'"
+echo "Installing tang..."
+go install -v -ldflags "$LDFLAGS" github.com/scraperwiki/tang
