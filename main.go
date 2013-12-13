@@ -314,37 +314,16 @@ func Command(workdir, command string, args ...string) *exec.Cmd {
 }
 
 // Invoked when a respository we are watching changes
-func runTang(repo, sha, repo_path, ref string) (err error) {
+func runTang(repo, sha, repo_path, ref, logDir string) (err error) {
 
 	// TODO(pwaller): determine lack of tang.hook?
 
-	c := `D=$TANG_LOGDIR/$TANG_SHA/log; mkdir -p $D; ./tang.hook |& tee $D/log.txt`
+	c := `D=$TANG_LOGDIR/$TANG_SHA; mkdir -p $D; ./tang.hook |& tee $D/log.txt`
 	cmd := Command(repo_path, "bash", "-c", c)
 
-	pwd, err := os.Getwd()
-	if err != nil {
-		err = fmt.Errorf("runTang/getwd %q", err)
-		return
-	}
-
-	logdir := path.Join(pwd, "logs/")
 	cmd.Env = append(os.Environ(),
-		"TANG_SHA="+sha, "TANG_REF="+ref, "TANG_LOGDIR="+logdir)
-	cmderr := cmd.Run()
-
-	if cmderr == nil {
-		// All OK, send along a green
-		s := GithubStatus{"success", "http://services.scraperwiki.com", "All OK"}
-		updateStatus(repo, sha, s)
-
-		return
-	}
-	// else if err, ok := cmderr.(*exec.ExitError); ok {
-	// status := err.Sys().(syscall.WaitStatus).ExitStatus()
-	// _ = status
-	// Not OK, send along red.
-	s := GithubStatus{"failure", "http://services.scraperwiki.com", cmderr.Error()}
-	updateStatus(repo, sha, s)
+		"TANG_SHA="+sha, "TANG_REF="+ref, "TANG_LOG="+logDir)
+	err = cmd.Run()
 
 	return
 }
@@ -366,9 +345,26 @@ func eventPush(event PushEvent) (err error) {
 
 	gh_repo := path.Join(event.Repository.Organization, event.Repository.Name)
 
-	// Set the state of the commit to "in progress" (seen as yellowe in
+	// Only use 6 characters of sha for the name of the
+	// directory checked out for this repository by tang.
+	short_sha := event.After[:6]
+	checkout_dir := path.Join("checkout", short_sha)
+
+	pwd, err := os.Getwd()
+	if err != nil {
+		err = fmt.Errorf("runTang/getwd %q", err)
+		return
+	}
+
+	logPath := path.Join("logs/", checkout_dir, "log.txt")
+	fullLogPath := path.Join(pwd, logPath)
+
+	// TODO(pwaller): One day this will have more information, e.g, QA link.
+	infoURL := "http://services.scraperwiki.com/" + logPath
+
+	// Set the state of the commit to "in progress" (seen as yellow in
 	// a github pull request)
-	status := GithubStatus{"pending", "http://services.scraperwiki.com", "Running"}
+	status := GithubStatus{"pending", infoURL, "Running"}
 	updateStatus(gh_repo, event.After, status)
 
 	log.Println("Push to", event.Repository.Url, event.Ref, "after", event.After)
@@ -383,11 +379,6 @@ func eventPush(event PushEvent) (err error) {
 	if err != nil {
 		return
 	}
-
-	// Only use 6 characters of sha for the name of the
-	// directory checked out for this repository by tang.
-	short_sha := event.After[:6]
-	checkout_dir := path.Join("checkout", short_sha)
 
 	// Checkout the target sha
 	err = gitCheckout(git_dir, checkout_dir, event.After)
@@ -405,10 +396,17 @@ func eventPush(event PushEvent) (err error) {
 
 	// Run the tang script for the repository, if there is one.
 	repo_workdir := path.Join(git_dir, checkout_dir)
-	err = runTang(gh_repo, event.After, repo_workdir, event.Ref)
-	if err != nil {
+	err = runTang(gh_repo, event.After, repo_workdir, event.Ref, fullLogPath)
+
+	if err == nil {
+		// All OK, send along a green
+		s := GithubStatus{"success", infoURL, "Tests passed"}
+		updateStatus(gh_repo, event.After, s)
 		return
 	}
 
+	// Not OK, send along red.
+	s := GithubStatus{"failure", infoURL, err.Error()}
+	updateStatus(gh_repo, event.After, s)
 	return
 }
