@@ -114,6 +114,7 @@ func ServeHTTP(l net.Listener) {
 }
 
 func main() {
+	log.Println("Starting")
 	// Get the socket quickly so we can drop privileges ASAP
 	l, err := getListener(*address)
 	check(err)
@@ -265,8 +266,8 @@ func handleHook(w http.ResponseWriter, r *http.Request) {
 	err = json.Indent(&buf, request, "", "  ")
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "Expected JSON POST payload.\n")
-		log.Println("No JSON payload. NOOP.")
+		fmt.Fprintf(w, "Expected valid JSON POST payload.\n")
+		log.Println("Not a valid JSON payload. NOOP.")
 		return
 	}
 
@@ -279,6 +280,18 @@ func handleHook(w http.ResponseWriter, r *http.Request) {
 	eventType := r.Header["X-Github-Event"][0]
 	data := buf.Bytes()
 
+	j, err := ParseJustNongithub(request)
+	if !j.NonGithub.Wait {
+		go func() {
+			err := handleEvent(eventType, data)
+			check(err) // nowhere for the error to go, just dump a trace for now.
+		}()
+
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "OK. Not waiting for build.\n")
+		return
+	}
+
 	err = handleEvent(eventType, data)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -287,6 +300,7 @@ func handleHook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "OK\n")
 }
 
