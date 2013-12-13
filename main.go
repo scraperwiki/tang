@@ -102,22 +102,12 @@ func ExitOnEOF() {
 	}()
 }
 
-type F struct {
-	http.Dir
-}
-
-func (ff F) Open(name string) (f http.File, e error) {
-	log.Println("Attempting to open file ", name)
-	f, e = ff.Dir.Open(name)
-	return
-}
-
 func ServeHTTP(l net.Listener) {
 	// Expose logs directory
 	pwd, err := os.Getwd()
 	check(err)
 	logDir := path.Join(pwd, "logs")
-	handler := http.FileServer(F{http.Dir(logDir)})
+	handler := http.FileServer(http.Dir(logDir))
 	log.Println("Serving logs at", logDir)
 	http.Handle("/tang/logs/", http.StripPrefix("/tang/logs/", handler))
 
