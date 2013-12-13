@@ -316,15 +316,15 @@ func Command(workdir, command string, args ...string) *exec.Cmd {
 }
 
 // Invoked when a respository we are watching changes
-func runTang(repo, sha, repo_path, ref, logDir string) (err error) {
+func runTang(repo, sha, repo_path, ref, logPath string) (err error) {
 
 	// TODO(pwaller): determine lack of tang.hook?
 
-	c := `echo Will try to write to $TANG_LOGDIR/log.txt; ./tang.hook |& tee $TANG_LOGDIR/log.txt; exit ${PIPESTATUS[0]}`
+	c := `echo Will try to write to $TANG_LOGPATH; ./tang.hook |& tee $TANG_LOGPATH; exit ${PIPESTATUS[0]}`
 	cmd := Command(repo_path, "bash", "-c", c)
 
 	cmd.Env = append(os.Environ(),
-		"TANG_SHA="+sha, "TANG_REF="+ref, "TANG_LOGDIR="+logDir)
+		"TANG_SHA="+sha, "TANG_REF="+ref, "TANG_LOGPATH="+logPath)
 	err = cmd.Run()
 
 	return
@@ -358,11 +358,18 @@ func eventPush(event PushEvent) (err error) {
 		return
 	}
 
-	logPath := path.Join("logs", short_sha, "log.txt")
+	logDir := path.Join("logs", short_sha)
+	err = os.MkdirAll(logDir, 0777)
+	if err != nil {
+		err = fmt.Errorf("runTang/MkdirAll(%q): ", logDir, err)
+		return
+	}
+
+	logPath := path.Join(logDir, "log.txt")
 	fullLogPath := path.Join(pwd, logPath)
 
 	// TODO(pwaller): One day this will have more information, e.g, QA link.
-	infoURL := "http://services.scraperwiki.com/" + logPath
+	infoURL := "http://services.scraperwiki.com/tang/" + logPath
 
 	// Set the state of the commit to "in progress" (seen as yellow in
 	// a github pull request)
