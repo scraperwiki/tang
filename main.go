@@ -187,15 +187,18 @@ func configureHooks() {
 
 func handleEvent(eventType string, document []byte) (err error) {
 
-	log.Println("Incoming request:", string(document))
+	// log.Println("Incoming request:", string(document))
 
 	switch eventType {
 	case "push":
+
 		var event PushEvent
 		err = json.Unmarshal(document, &event)
 		if err != nil {
 			return
 		}
+
+		log.Println("Received PushEvent %#+v", event)
 
 		if event.Deleted {
 			// When a branch is deleted we get a "push" event we don't care
@@ -222,10 +225,10 @@ func handleHook(w http.ResponseWriter, r *http.Request) {
 	check(err)
 
 	var buf bytes.Buffer
-	r.Header.Write(&buf)
-	log.Println("Incoming request headers: ", string(buf.Bytes()))
+	// r.Header.Write(&buf)
+	// log.Println("Incoming request headers: ", string(buf.Bytes()))
+	// buf.Reset()
 
-	buf.Reset()
 	err = json.Indent(&buf, request, "", "  ")
 	check(err)
 
