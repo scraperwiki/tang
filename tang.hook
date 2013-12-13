@@ -17,17 +17,17 @@ then
 	exit 0
 fi
 
-mkdir -p gopath/src
-ln -sf $PWD gopath/src/tang
+# Use a temporary gopath to install the software
+mkdir -p tmpgopath/src/github.com/scraperwiki
+ln -sf $PWD tmpgopath/src/github.com/scraperwiki/tang
 
-# echo "Installing..."
-# GOPATH=$PWD/gopath go install tang
-export GOPATH=$PWD/gopath
-./install-tang
+GOPATH=$PWD/tmpgopath:${GOPATH-} ./install-tang
 
 # Must delete old binary before replacing it
 ORIGBIN=${GOPATH-~/.local}/bin/tang
 mv $ORIGBIN $ORIGBIN.old
-cp $PWD/gopath/bin/tang $ORIGBIN
+cp $PWD/tmpgopath/bin/tang $ORIGBIN
+
+rm -R ./tmpgopath
 
 pkill -HUP tang
