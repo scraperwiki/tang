@@ -320,7 +320,7 @@ func runTang(repo, sha, repo_path, ref, logDir string) (err error) {
 
 	// TODO(pwaller): determine lack of tang.hook?
 
-	c := `./tang.hook |& tee $TANG_LOGDIR/log.txt; exit ${PIPESTATUS[0]}`
+	c := `echo Will try to write to $TANG_LOGDIR/log.txt; ./tang.hook |& tee $TANG_LOGDIR/log.txt; exit ${PIPESTATUS[0]}`
 	cmd := Command(repo_path, "bash", "-c", c)
 
 	cmd.Env = append(os.Environ(),
