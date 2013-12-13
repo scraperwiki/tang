@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -20,6 +21,7 @@ var (
 	address        = flag.String("address", ":8080", "address to listen on")
 	repositories   = flag.String("repositories", "scraperwiki/tang", "colon separated list of repositories to watch")
 	allowedPushers = flag.String("allowed-pushers", "drj11:pwaller", "list of people allowed")
+	uid            = flag.Int("uid", 0, "uid to run as")
 
 	github_user, github_password string
 
@@ -41,33 +43,100 @@ func check(err error) {
 	}
 }
 
+// Keepalive is necessary otherwise go's use of SetFinalizer will .close() the
+// file descriptors for us, which we don't want.
+var keepalive = []*os.File{}
+
+func InheritFd(fd uintptr) (file *os.File, err error) {
+	fd_name, err := os.Readlink(fmt.Sprintf("/proc/self/fd/%d", fd))
+	if err != nil {
+		return
+	}
+	file = os.NewFile(fd, fd_name)
+	keepalive = append(keepalive, file)
+	return
+}
+
+// Obtain listener by either taking it from `TANG_LISTEN_FD` if set, or
+// net.Listen otherwise.
+func getListener(address string) (l net.Listener, err error) {
+	var fd uintptr
+	if _, err = fmt.Sscan(os.Getenv("TANG_LISTEN_FD"), &fd); err == nil {
+		var listener_fd *os.File
+		listener_fd, err = InheritFd(fd)
+		if err != nil {
+			return
+		}
+
+		l, err = net.FileListener(listener_fd)
+		if err != nil {
+			err = fmt.Errorf("FileListener: %q", err)
+			return
+		}
+
+		return
+	}
+
+	log.Println("Making new listener")
+	l, err = net.Listen("tcp4", address)
+	if err != nil {
+		err = fmt.Errorf("unable to listen: %q", err)
+		return
+	}
+
+	fd = GetFd(l)
+	err = noCloseOnExec(fd)
+	if err != nil {
+		return
+	}
+
+	err = os.Setenv("TANG_LISTEN_FD", fmt.Sprintf("%d", fd))
+	if err != nil {
+		return
+	}
+
+	return
+}
+
 func main() {
+	// Start catching signals early.
+	sig := make(chan os.Signal)
+	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT)
+
+	log.Println("Started.")
 
 	// Must read exe before the executable is replaced
 	exe, err := os.Readlink("/proc/self/exe")
 	check(err)
 
+	l, err := getListener(*address)
+	check(err)
+	log.Println("Listening on:", *address)
+
 	go func() {
 		http.HandleFunc("/hook", handleHook)
-		log.Println("Listening on:", *address)
-		log.Fatal(http.ListenAndServe(*address, nil))
+		if *uid != 0 {
+			log.Println("Setting UID =", *uid)
+			err = syscall.Setreuid(*uid, *uid)
+			check(err)
+		}
+		err = http.Serve(l, nil)
+		log.Fatal(err)
 	}()
 
 	configureHooks()
 
-	sig := make(chan os.Signal)
-	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT)
 	<-sig
 	signal.Stop(sig)
 
 	log.Print("HUPPING!")
 
-	log.Printf("My exe = %q", exe)
-
 	// TODO(pwaller) Don't exec before everything else has finished.
 	// OTOH, that means waiting for other cruft in the pipeline, which
 	// might cause a significant delay.
 	// Maybe the process we exec to can wait on the children?
+	// This is probably very tricky to get right without delaying the exec.
+
 	err = syscall.Exec(exe, os.Args, os.Environ())
 	check(err)
 }
@@ -106,6 +175,7 @@ func configureHooks() {
 	}
 
 }
+
 func handleEvent(eventType string, document []byte) (err error) {
 
 	log.Println("Incoming request:", string(document))
