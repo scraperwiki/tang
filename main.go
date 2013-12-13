@@ -103,7 +103,9 @@ func ServeHTTP(l net.Listener) {
 	// Expose logs directory
 	pwd, err := os.Getwd()
 	check(err)
-	handler := http.FileServer(http.Dir(pwd + "logs"))
+	logDir := path.Join(pwd, "logs")
+	handler := http.FileServer(http.Dir(logDir))
+	log.Println("Serving logs at", logDir)
 	http.Handle("/tang/logs", http.StripPrefix("/tang/logs", handler))
 
 	// Github hook handler
