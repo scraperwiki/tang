@@ -20,7 +20,7 @@ func TestPush(t *testing.T) {
 			Organization: "example",
 			Url:          ".",
 		},
-		After:     "HEAD",
+		After:     "ee7c7b8f65dea5d3ef81c17eacd1b873be167109",
 		Pusher:    Pusher{Name: "testuser"},
 		NonGithub: NonGithub{NoBuild: true},
 	}
@@ -41,7 +41,7 @@ func TestEvent(t *testing.T) {
 	err := handleEvent("push", []byte(`{
 		"ref": "refs/heads/master",
 		"repository": {"name": "tang", "organization": "example", "url": "."},
-		"after": "HEAD",
+		"after": "ee7c7b8f65dea5d3ef81c17eacd1b873be167109",
 		"pusher": {"name":"testuser"},
 		"nongithub": {"nobuild": true}
 		}`))
@@ -58,7 +58,7 @@ func TestAccess(t *testing.T) {
 	err := handleEvent("push", []byte(`{
 		"ref": "refs/heads/master",
 		"repository": {"name": "tang", "organization": "example", "url": "."},
-		"after": "HEAD",
+		"after": "ee7c7b8f65dea5d3ef81c17eacd1b873be167109",
 		"pusher": {"name":"testeviluser"},
 		"nongithub": {"nobuild": true}
 		}`))
