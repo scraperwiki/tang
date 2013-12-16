@@ -374,6 +374,42 @@ func eventPush(event PushEvent) (err error) {
 	short_sha := event.After[:6]
 	checkout_dir := path.Join("checkout", short_sha)
 
+	log.Println("Push to", event.Repository.Url, event.Ref, "after", event.After)
+
+	// The name of the subdirectory where the git
+	// mirror is (or will appear, if it hasn't been
+	// cloned yet).
+	git_dir := path.Join(GIT_BASE_DIR, gh_repo)
+
+	// Update our local mirror
+	err = gitLocalMirror(event.Repository.Url, git_dir)
+	if err != nil {
+		return
+	}
+
+	tang_hook_present, err := gitHaveFile(git_dir, event.After, "tang.hook")
+	if err != nil {
+		return
+	}
+	if !tang_hook_present {
+		// Bail out, no tang.hook
+		return
+	}
+
+	if event.NonGithub.NoBuild {
+		// Bail out. This is here so that the tests
+		// can avoid running themselves.
+		return
+	}
+
+	// Checkout the target sha
+	err = gitCheckout(git_dir, checkout_dir, event.After)
+	if err != nil {
+		return
+	}
+
+	log.Println("Created", checkout_dir)
+
 	pwd, err := os.Getwd()
 	if err != nil {
 		err = fmt.Errorf("runTang/getwd %q", err)
@@ -397,33 +433,6 @@ func eventPush(event PushEvent) (err error) {
 	// a github pull request)
 	status := GithubStatus{"pending", infoURL, "Running"}
 	updateStatus(gh_repo, event.After, status)
-
-	log.Println("Push to", event.Repository.Url, event.Ref, "after", event.After)
-
-	// The name of the subdirectory where the git
-	// mirror is (or will appear, if it hasn't been
-	// cloned yet).
-	git_dir := path.Join(GIT_BASE_DIR, gh_repo)
-
-	// Update our local mirror
-	err = gitLocalMirror(event.Repository.Url, git_dir)
-	if err != nil {
-		return
-	}
-
-	// Checkout the target sha
-	err = gitCheckout(git_dir, checkout_dir, event.After)
-	if err != nil {
-		return
-	}
-
-	log.Println("Created", checkout_dir)
-
-	if event.NonGithub.NoBuild {
-		// Bail out. This is here so that the tests
-		// can avoid running themselves.
-		return
-	}
 
 	// Run the tang script for the repository, if there is one.
 	repo_workdir := path.Join(git_dir, checkout_dir)
