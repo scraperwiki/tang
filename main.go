@@ -178,7 +178,7 @@ func main() {
 	signal.Stop(sig)
 
 	// We've been instructed to exit.
-	log.Printf("Recieved %v, restarting...", value)
+	log.Printf("Recieved %v, revision %v restarting...", value, tangRev[:4])
 
 	// TODO(pwaller) Don't exec before everything else has finished.
 	// OTOH, that means waiting for other cruft in the pipeline, which
@@ -186,11 +186,6 @@ func main() {
 	// Maybe the process we exec to can wait on the children?
 	// This is probably very tricky to get right without delaying the exec.
 	// How do we find our children? Might involve iterating through /proc.
-
-	// The most problematic effect of this currently is that the deploy hook
-	// causes the process to restart before sending green for the commit,
-	// so we end up with commits which are "pending" even though the tests
-	// were run and deployment happened.
 
 	err = syscall.Exec(exe, os.Args, os.Environ())
 	check(err)
