@@ -10,7 +10,8 @@ import (
 )
 
 // Obtain listener by either taking it from `TANG_LISTEN_FD` if set, or
-// net.Listen otherwise.
+// net.Listen otherwise. This allows us to reuse a listener (e.g, because we
+// lost our privileges)
 func getListener(address string) (l net.Listener, err error) {
 	var fd uintptr
 	if _, err = fmt.Sscan(os.Getenv("TANG_LISTEN_FD"), &fd); err == nil {
