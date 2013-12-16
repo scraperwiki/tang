@@ -67,9 +67,17 @@ func Endpoint(args ...string) string {
 	return base + path.Join(args...)
 }
 
+var ErrSkipGithubEndpoint = errors.New("Github endpoint skipped")
+
 func Github(payload string, endpoint ...string) (respString string, resp *http.Response, err error) {
 	if os.Getenv("TANG_TEST") != "" {
 		// don't touch the endpoint during tests.
+		err = ErrSkipGithubEndpoint
+		return
+	}
+	if github_user == "" {
+		log.Printf("github_user not specified, not querying endpoint %q", endpoint)
+		err = ErrSkipGithubEndpoint
 		return
 	}
 
@@ -90,10 +98,6 @@ func Github(payload string, endpoint ...string) (respString string, resp *http.R
 
 // curl -d '{"state": "success", "target_url": "https://deleteme.pwaller.qa.scraperwiki.com/", "description": "Tests pass, deleteme.pwaller.qa.scraperwiki.com up"}' https://scraperwiki-salt:fe236ee1c96a3fcc5dd14047b3d35651ff9b919d@api.github.com/repos/scraperwiki/custard/statuses/c8e3e81f13ce73de42364fd61aae1216b5dc2b69
 func updateStatus(repo, sha string, githubStatus GithubStatus) {
-	if github_user == "" {
-		log.Println("github_user not specified, not sending status update")
-		return
-	}
 	bytes, err := json.Marshal(githubStatus)
 	check(err)
 	Github(string(bytes), "repos", repo, "statuses", sha)

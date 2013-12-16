@@ -102,20 +102,46 @@ func ExitOnEOF() {
 	}()
 }
 
+type TangHandler struct {
+	*http.ServeMux
+}
+
+func NewTangHandler() *TangHandler {
+	return &TangHandler{http.NewServeMux()}
+}
+
+func (th *TangHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if strings.HasSuffix(r.Host, ".qa.scraperwiki.com") {
+		fmt.Fprint(w, "TODO, proxy for %v", r.Host)
+		return
+	}
+
+	// Delegate
+	th.ServeMux.ServeHTTP(w, r)
+}
+
 func ServeHTTP(l net.Listener) {
 	// Expose logs directory
 	pwd, err := os.Getwd()
 	check(err)
 	logDir := path.Join(pwd, "logs")
-	handler := http.FileServer(http.Dir(logDir))
+
+	staticHandler := http.FileServer(http.Dir(logDir))
+
 	log.Println("Serving logs at", logDir)
-	http.Handle("/tang/logs/", http.StripPrefix("/tang/logs/", handler))
 
-	// Github hook handler
-	http.HandleFunc("/hook", handleHook)
+	handler := NewTangHandler()
 
-	err = http.Serve(l, nil)
+	handler.HandleFunc("/tang/", handleTang)
+	handler.Handle("/tang/logs/", http.StripPrefix("/tang/logs/", staticHandler))
+	handler.HandleFunc("/hook", handleHook)
+
+	err = http.Serve(l, handler)
 	log.Fatal(err)
+}
+
+func handleTang(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "TODO.")
 }
 
 func main() {
@@ -218,6 +244,9 @@ func configureHooks() {
 
 	for _, repo := range repos {
 		response, resp, err := Github(json, "repos", repo, "hooks")
+		if err == ErrSkipGithubEndpoint {
+			continue
+		}
 		check(err)
 
 		switch resp.StatusCode {
