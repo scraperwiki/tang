@@ -12,6 +12,7 @@ import (
 	"path"
 	"strings"
 	"syscall"
+	"time"
 )
 
 var (
@@ -41,62 +42,6 @@ func check(err error) {
 	if err != nil {
 		panic(err)
 	}
-}
-
-// Since CTRL-C is used for a reload, it's nice to have a way to exit (CTRL-D).
-func ExitOnEOF() {
-	func() {
-		buf := make([]byte, 64*1024)
-		for {
-			_, err := os.Stdin.Read(buf)
-			if err == io.EOF {
-				log.Println("EOF, bye!")
-				os.Exit(0)
-			}
-		}
-	}()
-}
-
-type TangHandler struct {
-	*http.ServeMux
-}
-
-func NewTangHandler() *TangHandler {
-	return &TangHandler{http.NewServeMux()}
-}
-
-func (th *TangHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if strings.HasSuffix(r.Host, ".qa.scraperwiki.com") {
-		fmt.Fprintf(w, "TODO, proxy for %v", r.Host)
-		return
-	}
-
-	// Delegate
-	th.ServeMux.ServeHTTP(w, r)
-}
-
-func ServeHTTP(l net.Listener) {
-	// Expose logs directory
-	pwd, err := os.Getwd()
-	check(err)
-	logDir := path.Join(pwd, "logs")
-
-	staticHandler := http.FileServer(http.Dir(logDir))
-
-	log.Println("Serving logs at", logDir)
-
-	handler := NewTangHandler()
-
-	handler.HandleFunc("/tang/", handleTang)
-	handler.Handle("/tang/logs/", http.StripPrefix("/tang/logs/", staticHandler))
-	handler.HandleFunc("/hook", handleHook)
-
-	err = http.Serve(l, handler)
-	log.Fatal(err)
-}
-
-func handleTang(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "TODO.")
 }
 
 func main() {
@@ -213,4 +158,75 @@ func configureHooks() {
 		}
 	}
 
+}
+
+// Since CTRL-C is used for a reload, it's nice to have a way to exit (CTRL-D).
+func ExitOnEOF() {
+	func() {
+		buf := make([]byte, 64*1024)
+		for {
+			_, err := os.Stdin.Read(buf)
+			if err == io.EOF {
+				log.Println("EOF, bye!")
+				os.Exit(0)
+			}
+		}
+	}()
+}
+
+func ServeHTTP(l net.Listener) {
+	// Expose logs directory
+	pwd, err := os.Getwd()
+	check(err)
+	logDir := path.Join(pwd, "logs")
+
+	staticHandler := http.FileServer(http.Dir(logDir))
+
+	log.Println("Serving logs at", logDir)
+
+	handler := NewTangHandler()
+
+	handler.HandleFunc("/tang/", handleTang)
+	handler.Handle("/tang/logs/", http.StripPrefix("/tang/logs/", staticHandler))
+	handler.HandleFunc("/hook", handleHook)
+
+	err = http.Serve(l, handler)
+	log.Fatal(err)
+}
+
+type TangHandler struct {
+	*http.ServeMux
+}
+
+func NewTangHandler() *TangHandler {
+	return &TangHandler{http.NewServeMux()}
+}
+
+func (th *TangHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if strings.HasSuffix(r.Host, ".qa.scraperwiki.com") {
+		th.HandleQA(w, r)
+		return
+	}
+
+	// Delegate
+	th.ServeMux.ServeHTTP(w, r)
+}
+
+func (th *TangHandler) HandleQA(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "TODO, proxy for %v", r.Host)
+}
+
+func handleTang(w http.ResponseWriter, r *http.Request) {
+	w.Header()["Content-Type"] = []string{"text/plain; charset=utf-8"}
+	w.WriteHeader(http.StatusOK)
+
+	fmt.Fprintf(w, `<!DOCTYPE html><style>html, body { font-type: sans; }</style><pre id="content"><pre>`)
+
+	for i := 0; i < 100; i++ {
+		fmt.Fprintf(w, "%d elephants\n", i)
+		w.(http.Flusher).Flush()
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	// fmt.Fprintf(w, `<script>window.location = "http://duckduckgo.com";</script>`)
 }

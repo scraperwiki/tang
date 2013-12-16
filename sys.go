@@ -1,5 +1,7 @@
 package main
 
+// Code for help interacting with the system
+
 import (
 	"fmt"
 	"log"

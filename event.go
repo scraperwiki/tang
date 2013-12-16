@@ -1,5 +1,7 @@
 package main
 
+// Code responsible for handling an incoming event from github
+
 import (
 	"bytes"
 	"encoding/json"

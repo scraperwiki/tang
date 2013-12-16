@@ -1,5 +1,7 @@
 package main
 
+// everything git and github related
+
 import (
 	"encoding/json"
 	"errors"
@@ -12,8 +14,6 @@ import (
 	"path"
 	"strings"
 )
-
-// everything git and github related
 
 const GIT_BASE_DIR = "repo"
 
