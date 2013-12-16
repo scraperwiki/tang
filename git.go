@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -130,6 +131,21 @@ func gitLocalMirror(url, git_dir string) (err error) {
 	}
 
 	return
+}
+
+func gitHaveFile(git_dir, ref, path string) (ok bool, err error) {
+	cmd := Command(git_dir, "git", "show", fmt.Sprintf("%s:%s", ref, path))
+	cmd.Stdout = nil // don't want to see the contents
+	err = cmd.Run()
+	ok = true
+	if err != nil {
+		ok = false
+		if err.Error() == "exit status 128" {
+			// This happens if the file doesn't exist.
+			err = nil
+		}
+	}
+	return ok, err
 }
 
 func gitCheckout(git_dir, checkout_dir, ref string) (err error) {

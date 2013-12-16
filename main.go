@@ -178,7 +178,7 @@ func main() {
 	signal.Stop(sig)
 
 	// We've been instructed to exit.
-	log.Printf("Recieved %v, restarting...", value)
+	log.Printf("Recieved %v, revision %v restarting...", value, tangRev[:4])
 
 	// TODO(pwaller) Don't exec before everything else has finished.
 	// OTOH, that means waiting for other cruft in the pipeline, which
@@ -186,11 +186,6 @@ func main() {
 	// Maybe the process we exec to can wait on the children?
 	// This is probably very tricky to get right without delaying the exec.
 	// How do we find our children? Might involve iterating through /proc.
-
-	// The most problematic effect of this currently is that the deploy hook
-	// causes the process to restart before sending green for the commit,
-	// so we end up with commits which are "pending" even though the tests
-	// were run and deployment happened.
 
 	err = syscall.Exec(exe, os.Args, os.Environ())
 	check(err)
@@ -379,6 +374,42 @@ func eventPush(event PushEvent) (err error) {
 	short_sha := event.After[:6]
 	checkout_dir := path.Join("checkout", short_sha)
 
+	log.Println("Push to", event.Repository.Url, event.Ref, "after", event.After)
+
+	// The name of the subdirectory where the git
+	// mirror is (or will appear, if it hasn't been
+	// cloned yet).
+	git_dir := path.Join(GIT_BASE_DIR, gh_repo)
+
+	// Update our local mirror
+	err = gitLocalMirror(event.Repository.Url, git_dir)
+	if err != nil {
+		return
+	}
+
+	tang_hook_present, err := gitHaveFile(git_dir, event.After, "tang.hook")
+	if err != nil {
+		return
+	}
+	if !tang_hook_present {
+		// Bail out, no tang.hook
+		return
+	}
+
+	if event.NonGithub.NoBuild {
+		// Bail out. This is here so that the tests
+		// can avoid running themselves.
+		return
+	}
+
+	// Checkout the target sha
+	err = gitCheckout(git_dir, checkout_dir, event.After)
+	if err != nil {
+		return
+	}
+
+	log.Println("Created", checkout_dir)
+
 	pwd, err := os.Getwd()
 	if err != nil {
 		err = fmt.Errorf("runTang/getwd %q", err)
@@ -402,33 +433,6 @@ func eventPush(event PushEvent) (err error) {
 	// a github pull request)
 	status := GithubStatus{"pending", infoURL, "Running"}
 	updateStatus(gh_repo, event.After, status)
-
-	log.Println("Push to", event.Repository.Url, event.Ref, "after", event.After)
-
-	// The name of the subdirectory where the git
-	// mirror is (or will appear, if it hasn't been
-	// cloned yet).
-	git_dir := path.Join(GIT_BASE_DIR, gh_repo)
-
-	// Update our local mirror
-	err = gitLocalMirror(event.Repository.Url, git_dir)
-	if err != nil {
-		return
-	}
-
-	// Checkout the target sha
-	err = gitCheckout(git_dir, checkout_dir, event.After)
-	if err != nil {
-		return
-	}
-
-	log.Println("Created", checkout_dir)
-
-	if event.NonGithub.NoBuild {
-		// Bail out. This is here so that the tests
-		// can avoid running themselves.
-		return
-	}
 
 	// Run the tang script for the repository, if there is one.
 	repo_workdir := path.Join(git_dir, checkout_dir)

@@ -1,7 +1,7 @@
 #! /bin/bash
 
-V="$(git rev-parse HEAD)"
-D="$(git log -1 --pretty="%ci")"
+V="$(git rev-parse ${TANG_SHA-HEAD})"
+D="$(git log -1 --pretty="%ci" ${TANG_SHA-HEAD})"
 
 LDFLAGS="-X main.tangRev $V -X main.tangDate '$D'"
 echo "Installing tang..."
