@@ -112,7 +112,7 @@ func NewTangHandler() *TangHandler {
 
 func (th *TangHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if strings.HasSuffix(r.Host, ".qa.scraperwiki.com") {
-		fmt.Fprint(w, "TODO, proxy for %v", r.Host)
+		fmt.Fprintf(w, "TODO, proxy for %v", r.Host)
 		return
 	}
 
