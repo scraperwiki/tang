@@ -138,6 +138,7 @@ func main() {
 
 	// Drop privileges immediately after getting socket
 	if *uid != 0 {
+		panic("setuid is not supported, see http://code.google.com/p/go/issues/detail?id=1435")
 		log.Println("Setting UID =", *uid)
 		err = syscall.Setuid(*uid)
 		check(err)
