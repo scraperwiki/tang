@@ -157,6 +157,14 @@ func main() {
 	// Set up github hooks
 	configureHooks()
 
+	go func() {
+		// Hack to let github know that the process started successfully
+		// (Since the previous one may have been killed)
+		infoURL := "http://services.scraperwiki.com/tang/"
+		s := GithubStatus{"success", infoURL, "Tang running"}
+		updateStatus("scraperwiki/tang", tangRev, s)
+	}()
+
 	// Tell the user how to quit
 	if IsTerminal(os.Stdin.Fd()) {
 		log.Println("Hello, terminal user. CTRL-D (EOF) to exit.")
