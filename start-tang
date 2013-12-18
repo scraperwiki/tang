@@ -1,10 +1,17 @@
 #! /bin/bash
+
 set -e
 
-DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TANG_PORT=${TANG_PORT:-80}
 
-if [[ "$(dirname "$DIR")" != "/" ]] || [[ "${TANG_INSIDE_DOCKER-}" == "" ]];
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [[ "$DIR" == "/tang" ]];
+then
+	TANG_INSIDE_DOCKER=true
+fi
+
+if [[ "${TANG_INSIDE_DOCKER-}" == "" ]];
 then
     # Not inside a tang container.
     ARGS=()
@@ -19,7 +26,7 @@ fi
 
 # So that go install can find it
 mkdir -p /usr/src/github.com/scraperwiki
-ln -s /tang /usr/src/github.com/scraperwiki/tang
+ln -sT /tang /usr/src/github.com/scraperwiki/tang
 
 ./install-tang
 
