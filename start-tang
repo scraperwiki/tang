@@ -4,7 +4,7 @@ set -e
 
 TANG_PORT=${TANG_PORT:-80}
 
-DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if [[ "$DIR" == "/tang" ]];
 then
