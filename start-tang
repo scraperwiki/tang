@@ -2,15 +2,16 @@
 set -e
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TANG_PORT=${TANG_PORT:-80}
 
 if [[ "$(dirname "$DIR")" != "/" ]] || [[ "${TANG_INSIDE_DOCKER-}" == "" ]];
 then
     # Not inside a tang container.
     ARGS=()
-    ARGS+=(-i -t)                     # Interactive, terminal
-    ARGS+=(-p 127.0.0.1:8080:8080)    # Poke hole
-    ARGS+=(-v $DIR:/tang)             # Mount $PWD into /tang
-    ARGS+=(-e TANG_INSIDE_DOCKER=YES) # So that we don't recurse
+    ARGS+=(-i -t)                      # Interactive, terminal
+    ARGS+=(-p 0.0.0.0:$TANG_PORT:8080) # Poke hole
+    ARGS+=(-v $DIR:/tang)              # Mount $PWD into /tang
+    ARGS+=(-e TANG_INSIDE_DOCKER=YES)  # So that we don't recurse
 
     docker run "${ARGS[@]}" tang
     exit 0
