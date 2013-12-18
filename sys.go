@@ -1,9 +1,12 @@
 package main
 
+// Code for help interacting with the system
+
 import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"reflect"
 	"runtime"
 	"syscall"
@@ -84,4 +87,14 @@ func IsTerminal(fd uintptr) bool {
 	_, _, err := syscall.Syscall6(syscall.SYS_IOCTL, fd,
 		ioctlReadTermios, uintptr(unsafe.Pointer(&termios)), 0, 0, 0)
 	return err == 0
+}
+
+// Invoke a `command` in `workdir` with `args`, connecting up its Stdout and Stderr
+func Command(workdir, command string, args ...string) *exec.Cmd {
+	log.Printf("wd = %s cmd = %s, args = %q", workdir, command, append([]string{}, args...))
+	cmd := exec.Command(command, args...)
+	cmd.Dir = workdir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd
 }
