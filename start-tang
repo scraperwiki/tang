@@ -13,7 +13,7 @@ then
     ARGS+=(-v $DIR:/tang)              # Mount $PWD into /tang
     ARGS+=(-e TANG_INSIDE_DOCKER=YES)  # So that we don't recurse
 
-    docker run "${ARGS[@]}" tang
+    docker run "${ARGS[@]}" tang "$@"
     exit 0
 fi
 
