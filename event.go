@@ -166,6 +166,7 @@ func eventPush(event PushEvent) (err error) {
 	// `tang-event`, where we don't know the sha beforehand.
 	sha, err := gitRevParse(git_dir, event.After)
 	if err != nil {
+		err = fmt.Errorf("gitRevParse: %q", err)
 		return
 	}
 

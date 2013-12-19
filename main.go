@@ -197,10 +197,27 @@ func ServeHTTP(l net.Listener) {
 
 type TangHandler struct {
 	*http.ServeMux
+	ServerFactory
+}
+
+type ServerFactory interface {
+	Start(organization, repo, sha string)
+	Stop()
+}
+
+type serverFactory struct {
+}
+
+func (sf *serverFactory) Start(organization, repo, sha string) {
+
+}
+
+func (sf *serverFactory) Stop() {
+
 }
 
 func NewTangHandler() *TangHandler {
-	return &TangHandler{http.NewServeMux()}
+	return &TangHandler{http.NewServeMux(), &serverFactory{}}
 }
 
 func (th *TangHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

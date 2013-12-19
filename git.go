@@ -154,6 +154,7 @@ func gitHaveFile(git_dir, ref, path string) (ok bool, err error) {
 
 func gitRevParse(git_dir, ref string) (sha string, err error) {
 	cmd := Command(git_dir, "git", "rev-parse", ref)
+	cmd.Stdout = nil // for cmd.Output
 
 	var stdout []byte
 	stdout, err = cmd.Output()
