@@ -1,0 +1,45 @@
+#! /bin/bash
+
+set -x
+set -u -e
+
+usage() {
+	echo "Simulate a pull request being updated"
+	echo "usage: tang-event <repo> <pr>"
+	echo "TODO, if needed: [-e http://tang-endpoint] [-o organization] [-p pusher]"
+}
+
+: ${1?"$(usage)"} ${2?"$(usage)"}
+
+REF=${REF-refs/pull/$2/head}
+
+NAME=$1
+
+ORG=${ORG-scraperwiki}
+PUSHER=${PUSHER-localuser}
+
+URL="git://github.com/$ORG/$NAME"
+ENDPOINT="http://localhost:8080/hook"
+
+read -r -d '' PAYLOAD <<EOF || true
+{
+	"ref": "$REF",
+	"after": "$REF",
+	"repository": {
+		"name": "$NAME",
+		"url": "$URL",
+		"organization": "$ORG"
+	},
+	"pusher": {
+		"name": "$PUSHER"
+	},
+	"nongithub": {
+		"wait": true
+	}
+}
+EOF
+
+if ! curl -i -H "X-Github-Event: push" -d "$PAYLOAD" "$ENDPOINT"
+then
+    echo tang not running or hook failed.
+fi
