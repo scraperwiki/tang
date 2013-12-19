@@ -203,13 +203,10 @@ func NewTangHandler() *TangHandler {
 	return &TangHandler{http.NewServeMux()}
 }
 
-var checkQA, _ = regexp.Compile(`^.*.qa.scraperwiki.com(:\d+)?`)
-
 func (th *TangHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Incoming request: %v %v", r.Host, r.URL)
 
-	if checkQA.MatchString(r.Host) {
-		th.HandleQA(w, r)
+	if th.HandleQA(w, r) {
 		return
 	}
 
@@ -217,8 +214,19 @@ func (th *TangHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	th.ServeMux.ServeHTTP(w, r)
 }
 
-func (th *TangHandler) HandleQA(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "TODO, proxy for %v", r.Host)
+var checkQA, _ = regexp.Compile(`^([^.]+).([^.]+).qa.scraperwiki.com(:\d+)?`)
+
+func (th *TangHandler) HandleQA(w http.ResponseWriter, r *http.Request) (handled bool) {
+	pieces := checkQA.FindStringSubmatch(r.Host)
+	if pieces == nil {
+		return
+	}
+
+	ref, repository := pieces[1], pieces[2]
+
+	fmt.Fprintf(w, "TODO, proxy for %v %v %v", r.Host, ref, repository)
+	handled = true
+	return
 }
 
 func handleTang(w http.ResponseWriter, r *http.Request) {
