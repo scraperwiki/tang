@@ -203,6 +203,7 @@ func NewTangHandler() *TangHandler {
 }
 
 func (th *TangHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	log.Printf("Incoming request: %v %v", r.Host, r.URL)
 	if strings.HasSuffix(r.Host, ".qa.scraperwiki.com") {
 		th.HandleQA(w, r)
 		return
