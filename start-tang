@@ -19,6 +19,8 @@ then
     ARGS+=(-p 0.0.0.0:$TANG_PORT:8080) # Poke hole
     ARGS+=(-v $DIR:/tang)              # Mount $PWD into /tang
     ARGS+=(-e TANG_INSIDE_DOCKER=YES)  # So that we don't recurse
+    ARGS+=(-e GITHUB_USER=$GITHUB_USER)
+    ARGS+=(-e GITHUB_PASSWORD=$GITHUB_PASSWORD)
 
     docker run "${ARGS[@]}" tang "$@"
     exit 0
