@@ -21,6 +21,9 @@ Roadmap
 =======
 
 - ✓ On git push, update a local clone, if tang.hook exists check it out and invoke tang.hook.
-- ✓ (for now) Only run for 'allowed users'
+- ✓ (for now) Only run for 'allowed pushers'
 - ✓ Tang runs inside a docker container
-- Provide a persistent data volume (assume we can trust)
+- tang-event script for synthesizing github events
+- Have an interface for "starting" and "stopping"
+- Provide a persistent data volume (assume we can trust tang.hook for now, later we can have auth by repository)
+- Tang runs tang.hook inside docker containers
