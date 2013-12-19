@@ -152,6 +152,19 @@ func gitHaveFile(git_dir, ref, path string) (ok bool, err error) {
 	return ok, err
 }
 
+func gitRevParse(git_dir, ref string) (sha string, err error) {
+	cmd := Command(git_dir, "git", "rev-parse", ref)
+
+	var stdout []byte
+	stdout, err = cmd.Output()
+	if err != nil {
+		return
+	}
+
+	sha = string(stdout)
+	return
+}
+
 func gitCheckout(git_dir, checkout_dir, ref string) (err error) {
 
 	err = os.MkdirAll(path.Join(git_dir, checkout_dir), 0777)

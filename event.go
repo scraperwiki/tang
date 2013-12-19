@@ -142,11 +142,6 @@ func eventPush(event PushEvent) (err error) {
 
 	gh_repo := path.Join(event.Repository.Organization, event.Repository.Name)
 
-	// Only use 6 characters of sha for the name of the
-	// directory checked out for this repository by tang.
-	short_sha := event.After[:6]
-	checkout_dir := path.Join("checkout", short_sha)
-
 	log.Println("Push to", event.Repository.Url, event.Ref, "after", event.After)
 
 	// The name of the subdirectory where the git
@@ -166,6 +161,18 @@ func eventPush(event PushEvent) (err error) {
 		// Bail out, error, no tang.hook or instructed not to build it.
 		return
 	}
+
+	// Dereference event.After, always. Not needed for github but useful for
+	// `tang-event`, where we don't know the sha beforehand.
+	sha, err := gitRevParse(git_dir, event.After)
+	if err != nil {
+		return
+	}
+
+	// Only use 6 characters of sha for the name of the
+	// directory checked out for this repository by tang.
+	short_sha := sha[:6]
+	checkout_dir := path.Join("checkout", short_sha)
 
 	// Checkout the target sha
 	err = gitCheckout(git_dir, checkout_dir, event.After)
