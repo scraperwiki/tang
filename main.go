@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
@@ -202,9 +203,12 @@ func NewTangHandler() *TangHandler {
 	return &TangHandler{http.NewServeMux()}
 }
 
+var checkQA, _ = regexp.Compile(`^.*.qa.scraperwiki.com(:\d+)?`)
+
 func (th *TangHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Incoming request: %v %v", r.Host, r.URL)
-	if strings.HasSuffix(r.Host, ".qa.scraperwiki.com") {
+
+	if checkQA.MatchString(r.Host) {
 		th.HandleQA(w, r)
 		return
 	}
