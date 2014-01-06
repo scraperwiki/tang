@@ -7,6 +7,8 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"os/signal"
 	"path"
@@ -240,8 +242,16 @@ func (th *TangHandler) HandleQA(w http.ResponseWriter, r *http.Request) (handled
 	}
 
 	ref, repository := pieces[1], pieces[2]
+	_, _ = ref, repository
 
-	fmt.Fprintf(w, "TODO, proxy for %v %v %v", r.Host, ref, repository)
+	//fmt.Fprintf(w, "TODO, proxy for %v %v %v", r.Host, ref, repository)
+
+	u, err := url.Parse("http://localhost/")
+	if err != nil {
+		return
+	}
+	p := httputil.NewSingleHostReverseProxy(u)
+	p.ServeHTTP(w, r)
 	handled = true
 	return
 }
