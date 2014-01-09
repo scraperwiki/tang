@@ -56,7 +56,7 @@ func main() {
 	}
 
 	// Get the socket quickly so we can drop privileges ASAP
-	l, err := getListener(*address)
+	listener, err := getListener(*address)
 	check(err)
 
 	// Must read exe before the executable is replaced by deployment
@@ -81,7 +81,7 @@ func main() {
 	err = os.MkdirAll("logs/", 0777)
 	check(err)
 
-	go ServeHTTP(l)
+	go ServeHTTP(listener)
 
 	// Set up github hooks
 	configureHooks()
@@ -183,14 +183,14 @@ func ServeHTTP(l net.Listener) {
 	check(err)
 	logDir := path.Join(pwd, "logs")
 
-	staticHandler := http.FileServer(http.Dir(logDir))
+	logHandler := http.FileServer(http.Dir(logDir))
 
 	log.Println("Serving logs at", logDir)
 
 	handler := NewTangHandler()
 
 	handler.HandleFunc("/tang/", handleTang)
-	handler.Handle("/tang/logs/", http.StripPrefix("/tang/logs/", staticHandler))
+	handler.Handle("/tang/logs/", http.StripPrefix("/tang/logs/", logHandler))
 	handler.HandleFunc("/hook", handleHook)
 
 	err = http.Serve(l, handler)

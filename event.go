@@ -14,7 +14,6 @@ import (
 )
 
 // This function is called whenever an event happens on github.
-// Valid event types are
 func handleEvent(eventType string, document []byte) (err error) {
 
 	// log.Println("Incoming request:", string(document))
@@ -115,6 +114,7 @@ func handleHook(w http.ResponseWriter, r *http.Request) {
 // Invoked when a respository we are watching changes
 func runTang(repo, sha, repo_path, ref, logPath string) (err error) {
 
+    // TODO(pwaller): do tee in go.
 	c := `./tang.hook |& tee $TANG_LOGPATH; exit ${PIPESTATUS[0]}`
 	cmd := Command(repo_path, "bash", "-c", c)
 
