@@ -68,7 +68,14 @@ The URLs tang responds to are:
 /tang - for experimentation and testing
 
 URLs in the domain `qa.scraperwiki.com` are routed to the
-products built in the `tang.hook` (not yet).
+products built in the `tang.hook` (not yet):
+
+<branch>.<repo-name>.qa.scraperwiki.com (how does tang know that
+there is a docker container to connect to?)
+
+We expect that a foodev.custard.qa.scraperwiki.com will
+generally be configured to connect to
+foodev.cobalt.qa.scraperwiki.com (really?).
 
 
 Image by H. Zell used under GFDL:
