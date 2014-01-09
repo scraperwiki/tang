@@ -10,6 +10,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path"
 	"regexp"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/dustin/go-follow"
 	"github.com/gorilla/websocket"
+	"github.com/golang/groupcache/lru"
 )
 
 var (
@@ -270,27 +272,97 @@ func ServeHTTP(l net.Listener) {
 
 type TangHandler struct {
 	*http.ServeMux
-	ServerFactory
+	requests chan<- Request
 }
 
-type ServerFactory interface {
-	Start(organization, repo, sha string)
-	Stop()
+type Request struct {
+	server   string
+	response chan<- Server
 }
 
-type serverFactory struct {
+type Server interface {
+	start(stuff string)
+	stop()
+	ready() (port uint16, err error)
 }
 
-func (sf *serverFactory) Start(organization, repo, sha string) {
-
+// Implementation of Server that uses exec() and normal Unix processes.
+type execServer struct {
+	cmd  *exec.Cmd
+	port uint16
+	up   chan struct{}
+	err  error
 }
 
-func (sf *serverFactory) Stop() {
+func waitForListenerOn(port uint16) error {
+	for spins := 0; spins < 600; spins++ {
+		conn, err := net.Dial("tcp4", fmt.Sprintf(":%d", port))
+		if err == nil {
+                        conn.Close()
+			return nil
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	return fmt.Errorf("Timed out trying to connect to :%d", port)
+}
 
+func (s *execServer) start(stuff string) {
+	s.port = 8888
+	s.cmd = exec.Command("sh", "-c", fmt.Sprintf(
+		`while :; do printf "HTTP/1.1 200 OK\n\n$(date)" | nc -l %d; done`, s.port))
+	go func() {
+		log.Printf("About to start %s %v", s.cmd.Path,
+			s.cmd.Args)
+		s.err = s.cmd.Start()
+		if s.err == nil {
+			s.err = waitForListenerOn(s.port)
+		}
+		log.Printf("Server ready. err: %q", s.err)
+		close(s.up)
+	}()
+}
+
+func (s *execServer) stop() {
+	err := s.cmd.Process.Kill()
+	if err != nil {
+		log.Printf("Error when killing process on :%d : %q", s.port, err)
+	}
+}
+
+func (s *execServer) ready() (port uint16, err error) {
+	<-s.up
+	return s.port, s.err
+}
+
+func NewServer(request Request) Server {
+	s := &execServer{}
+	s.start("stuff probably dervied from request")
+	return s
+}
+
+// Route qa servers (branch repo combination) to a port number.
+// Starting a server if necessary.
+func ServerRouter(requests <-chan Request) {
+	cache := lru.New(5)
+	cache.OnEvicted = func(key lru.Key, value interface{}) {
+		value.(Server).stop()
+	}
+
+	for {
+		request := <-requests
+		value, ok := cache.Get(request.server)
+		if !ok {
+			value = NewServer(request)
+			cache.Add(request.server, value)
+		}
+		request.response <-value.(Server)
+	}
 }
 
 func NewTangHandler() *TangHandler {
-	return &TangHandler{http.NewServeMux(), &serverFactory{}}
+	requests := make(chan Request)
+	go ServerRouter(requests)
+	return &TangHandler{http.NewServeMux(), requests}
 }
 
 func (th *TangHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -304,6 +376,7 @@ func (th *TangHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	th.ServeMux.ServeHTTP(w, r)
 }
 
+// TODO(drj): add params here on the left of the branch.
 var checkQA, _ = regexp.Compile(`^([^.]+).([^.]+).qa.scraperwiki.com(:\d+)?`)
 
 func (th *TangHandler) HandleQA(w http.ResponseWriter, r *http.Request) (handled bool) {
