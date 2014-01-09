@@ -5,7 +5,9 @@ Tang
 ![Ancanthurus leucosternon](http://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Acanthurus_leucosternon_01.JPG/640px-Acanthurus_leucosternon_01.JPG "Powder Blue Tang")
 
 Tang installs itself as a github service hook, then listens. It
-does stuff when you push to `github.com`.
+does stuff when you push to `github.com`. Add a `tang.hook` file
+to your repo and tang will run it when pushed, lighting up your
+github repos with red, green, and amber lights.
 
 `go` is required.
 
@@ -42,6 +44,32 @@ do it most of the time):
 
     tang                # runs tang
     sudo -E ./tang      # runs tang as root
+    ./tang --help       # lists options
+
+# Principles of Operation
+
+tang listens (on port 8080 by default, but we expect this to be
+fronted by nginx or similar).
+
+It responds to various signals and conditions (typical of most
+Unix daemons):
+
+SIGQUIT - quits.
+SIGINT - restart by reloading the executable.
+EOF (on stdin) - quits an interactive tang.
+
+The URLs tang responds to are:
+
+/hook - for handling calls from github.com (checks out repo and
+        runs `tang.hook`).
+
+/tang/logs - serve the log directory
+
+/tang - for experimentation and testing
+
+URLs in the domain `qa.scraperwiki.com` are routed to the
+products built in the `tang.hook` (not yet).
+
 
 Image by H. Zell used under GFDL:
 http://en.wikipedia.org/wiki/File:Acanthurus_leucosternon_01.JPG
