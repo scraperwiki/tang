@@ -54,32 +54,28 @@ fronted by nginx or similar).
 It responds to various signals and conditions (typical of most
 Unix daemons):
 
-SIGQUIT - quits.
-SIGINT - restart by reloading the executable.
-EOF (on stdin) - quits an interactive tang.
+* `SIGQUIT` - quits.
+* `SIGINT` and `SIGHUP` - restart by reloading the executable.
+* `EOF` (on stdin) - quits an interactive tang.
 
 The URLs tang responds to are:
 
-/hook - for handling calls from github.com (checks out repo and
-        runs `tang.hook`).
+* `/hook` - for handling calls from github.com (checks out repo and
+  runs `tang.hook`).
 
-/tang/logs - serve the log directory
+* `/tang/logs` - serve the log directory
 
-/tang - for experimentation and testing
+* `/tang` - for experimentation and testing
 
-URLs in the domain `qa.scraperwiki.com` are routed to the
-products built in the `tang.hook` (not yet):
+URLs in the domain `qa.scraperwiki.com` are routed to a server
+built by a repos' `tang.serve` script (if the repo has one). The
+`tang.serve` script will be run on demand in a docker container
+that tang creates.
 
-<branch>.<repo-name>.qa.scraperwiki.com (how does tang know that
-there is a docker container to connect to?)
-
-We expect that a foodev.custard.qa.scraperwiki.com will
-generally be configured to connect to
-foodev.cobalt.qa.scraperwiki.com (really?).
-
-
-Image by H. Zell used under GFDL:
-http://en.wikipedia.org/wiki/File:Acanthurus_leucosternon_01.JPG
+`[<params>].<branch>.<repo-name>.qa.scraperwiki.com` will route to the tag
+`<branch>` on the repo `scraperwiki/<repo-name>`. `<params>` is
+optional and will be made available to the server for it to use
+as configuration parameters.
 
 
 Roadmap
@@ -92,3 +88,8 @@ Roadmap
 - Have an interface for "starting" and "stopping"
 - Provide a persistent data volume (assume we can trust tang.hook for now, later we can have auth by repository)
 - Tang runs tang.hook inside docker containers
+
+### Credits
+
+Image by H. Zell used under GFDL:
+http://en.wikipedia.org/wiki/File:Acanthurus_leucosternon_01.JPG
