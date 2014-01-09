@@ -7,9 +7,12 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"os/signal"
 	"path"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
@@ -53,7 +56,7 @@ func main() {
 	}
 
 	// Get the socket quickly so we can drop privileges ASAP
-	l, err := getListener(*address)
+	listener, err := getListener(*address)
 	check(err)
 
 	// Must read exe before the executable is replaced by deployment
@@ -78,7 +81,7 @@ func main() {
 	err = os.MkdirAll("logs/", 0777)
 	check(err)
 
-	go ServeHTTP(l)
+	go ServeHTTP(listener)
 
 	// Set up github hooks
 	configureHooks()
@@ -180,14 +183,14 @@ func ServeHTTP(l net.Listener) {
 	check(err)
 	logDir := path.Join(pwd, "logs")
 
-	staticHandler := http.FileServer(http.Dir(logDir))
+	logHandler := http.FileServer(http.Dir(logDir))
 
 	log.Println("Serving logs at", logDir)
 
 	handler := NewTangHandler()
 
 	handler.HandleFunc("/tang/", handleTang)
-	handler.Handle("/tang/logs/", http.StripPrefix("/tang/logs/", staticHandler))
+	handler.Handle("/tang/logs/", http.StripPrefix("/tang/logs/", logHandler))
 	handler.HandleFunc("/hook", handleHook)
 
 	err = http.Serve(l, handler)
@@ -196,15 +199,33 @@ func ServeHTTP(l net.Listener) {
 
 type TangHandler struct {
 	*http.ServeMux
+	ServerFactory
+}
+
+type ServerFactory interface {
+	Start(organization, repo, sha string)
+	Stop()
+}
+
+type serverFactory struct {
+}
+
+func (sf *serverFactory) Start(organization, repo, sha string) {
+
+}
+
+func (sf *serverFactory) Stop() {
+
 }
 
 func NewTangHandler() *TangHandler {
-	return &TangHandler{http.NewServeMux()}
+	return &TangHandler{http.NewServeMux(), &serverFactory{}}
 }
 
 func (th *TangHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if strings.HasSuffix(r.Host, ".qa.scraperwiki.com") {
-		th.HandleQA(w, r)
+	log.Printf("Incoming request: %v %v", r.Host, r.URL)
+
+	if th.HandleQA(w, r) {
 		return
 	}
 
@@ -212,8 +233,27 @@ func (th *TangHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	th.ServeMux.ServeHTTP(w, r)
 }
 
-func (th *TangHandler) HandleQA(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "TODO, proxy for %v", r.Host)
+var checkQA, _ = regexp.Compile(`^([^.]+).([^.]+).qa.scraperwiki.com(:\d+)?`)
+
+func (th *TangHandler) HandleQA(w http.ResponseWriter, r *http.Request) (handled bool) {
+	pieces := checkQA.FindStringSubmatch(r.Host)
+	if pieces == nil {
+		return
+	}
+
+	ref, repository := pieces[1], pieces[2]
+	_, _ = ref, repository
+
+	//fmt.Fprintf(w, "TODO, proxy for %v %v %v", r.Host, ref, repository)
+
+	u, err := url.Parse("http://localhost/")
+	if err != nil {
+		return
+	}
+	p := httputil.NewSingleHostReverseProxy(u)
+	p.ServeHTTP(w, r)
+	handled = true
+	return
 }
 
 func handleTang(w http.ResponseWriter, r *http.Request) {
