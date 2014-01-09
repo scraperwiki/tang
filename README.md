@@ -7,11 +7,41 @@ Tang
 Tang installs itself as a github service hook, then listens. It
 does stuff when you push to `github.com`.
 
-    go build
+`go` is required.
+
+# Running tang
+
+The source code for tang must be installed in a
+place where `go install` can find it, probably underneath your
+`GOPATH`. I have a symlink made like this:
+
+    mkdir -p $GOPATH/src/github.com
+    ln -s ~/sw $GOPATH/src/github.com/scraperwiki
+
+Docker must be installed and a docker container for tang must be
+built:
+
+    docker build -t tang .
+
+A master script will build tang, install it, and run it in a
+docker container (building and installing tang is quick enough that we
+do it most of the time):
 
     # Set GITHUB_USER and GITHUB_PASSWORD
     . ./github-password.sh
-    sudo -E ./tang
+    sudo ./start-tang
+
+
+# Building, Installing, Testing
+
+    go build            # builds
+
+    ./install-tang      # builds and installs
+
+    go test             # tests
+
+    tang                # runs tang
+    sudo -E ./tang      # runs tang as root
 
 Image by H. Zell used under GFDL:
 http://en.wikipedia.org/wiki/File:Acanthurus_leucosternon_01.JPG
