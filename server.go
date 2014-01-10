@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"math/rand"
 	"net"
 	"net/url"
 	"os"
@@ -46,7 +47,7 @@ func waitForListenerOn(port uint16) error {
 }
 
 func (s *execServer) start(stuff string) {
-	s.port = 8888
+	s.port = 32767 + rand.Int31n(32768)
 	s.cmd = exec.Command("sh", "-c", fmt.Sprintf(
 		`while :; do printf "HTTP/1.1 200 OK\n\n$(date)" | nc -l %d; done`, s.port))
 	s.cmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGHUP}
