@@ -1,5 +1,10 @@
 #! /bin/bash
 
+if [ "$1" == "shell" ]
+then
+  exec bash -l
+fi
+
 set -e
 
 TANG_PORT=${TANG_PORT:-80}
