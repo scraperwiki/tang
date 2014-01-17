@@ -75,7 +75,7 @@ func main() {
 
 	// Start catching signals early.
 	sig := make(chan os.Signal)
-	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT)
+	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
 
 	// Make somewhere to put our logs
 	err = os.MkdirAll("logs/", 0777)
@@ -106,8 +106,14 @@ func main() {
 	value := <-sig
 	signal.Stop(sig)
 
+	log.Printf("Received %v", value)
+
+	if value == syscall.SIGTERM {
+		return
+	}
+
 	// We've been instructed to exit.
-	log.Printf("Received %v, revision %v restarting...", value, (tangRev + "doge")[:4])
+	log.Printf("Revision %v exiting, restarting...", (tangRev + "doge")[:4])
 
 	// TODO(pwaller) Don't exec before everything else has finished.
 	// OTOH, that means waiting for other cruft in the pipeline, which
