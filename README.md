@@ -9,6 +9,8 @@ does stuff when you push to `github.com`. Add a `tang.hook` file
 to your repo and tang will run it when pushed, lighting up your
 github repos with red, green, and amber lights.
 
+When deployed at Scraperwiki, its available on `services.scraperwiki.com`.
+
 `go` is required.
 
 # Running tang
