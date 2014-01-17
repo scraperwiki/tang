@@ -48,7 +48,6 @@ func check(err error) {
 }
 
 func main() {
-	println("Hello, Ed!")
 	if tangRev == "" {
 		log.Println("tangRev and tangDate unavailable.")
 		log.Println("Use install-tang script if you want build date/version")
