@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"regexp"
 	"strings"
 )
 
@@ -90,7 +91,9 @@ func Github(payload string, endpoint ...string) (respString string, resp *http.R
 		return
 	}
 
-	log.Println("Querying", url)
+	re := regexp.MustCompile("://.*:.*@")
+	urlNotSecret := re.ReplaceAllLiteralString(url, "://***@")
+	log.Println("Querying", urlNotSecret)
 	log.Println("Rate Limit:", resp.Header["X-Ratelimit-Remaining"][0])
 
 	return string(response), resp, err
