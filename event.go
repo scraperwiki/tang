@@ -14,10 +14,14 @@ import (
 	"path"
 )
 
+var jsonLogFile, _ = os.Create("logs/json.log")
+var jsonLog = log.New(jsonLogFile, "", log.LstdFlags)
+
 // This function is called whenever an event happens on github.
 func handleEvent(eventType string, document []byte) (err error) {
 
 	// log.Println("Incoming request:", string(document))
+	jsonLog.Println("Incoming request:", string(document))
 
 	switch eventType {
 	case "push":
