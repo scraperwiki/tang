@@ -36,4 +36,4 @@ cp $PWD/tmpgopath/bin/tang $ORIGBIN
 
 rm -R ./tmpgopath
 
-pkill -HUP tang
+pkill -HUP -x tang
