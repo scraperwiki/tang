@@ -14,10 +14,14 @@ import (
 	"path"
 )
 
+var jsonLogFile, _ = os.Create("logs/json.log")
+var jsonLog = log.New(jsonLogFile, "", log.LstdFlags)
+
 // This function is called whenever an event happens on github.
 func handleEvent(eventType string, document []byte) (err error) {
 
 	// log.Println("Incoming request:", string(document))
+	jsonLog.Println("Incoming request:", string(document))
 
 	switch eventType {
 	case "push":
@@ -113,14 +117,17 @@ func handleHook(w http.ResponseWriter, r *http.Request) {
 }
 
 // Invoked when a respository we are watching changes
-func runTang(repo, sha, repo_path, ref, logPath string) (err error) {
+func runTang(repo, repo_path, logPath string, event PushEvent) (err error) {
+
+	sha := event.After
+	ref := event.Ref
 
 	// TODO(pwaller): do tee in go.
 	// c := `./tang.hook |& tee $TANG_LOGPATH; exit ${PIPESTATUS[0]}`
 	// cmd := Command(repo_path, "bash", "-c", c)
 	cmd := Command(repo_path, "./tang.hook")
 
-	tang_logfile, err := os.Open(logPath)
+	tang_logfile, err := os.Create(logPath)
 	if err != nil {
 		return
 	}
@@ -220,7 +227,7 @@ func eventPush(event PushEvent) (err error) {
 
 	// Run the tang script for the repository, if there is one.
 	repo_workdir := path.Join(git_dir, checkout_dir)
-	err = runTang(gh_repo, event.After, repo_workdir, event.Ref, fullLogPath)
+	err = runTang(gh_repo, repo_workdir, fullLogPath, event)
 
 	if err == nil {
 		// All OK, send along a green

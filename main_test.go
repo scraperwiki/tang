@@ -1,9 +1,19 @@
 package main
 
 import (
+	"log"
 	"os"
 	"testing"
+
+	"github.com/kr/text"
 )
+
+func IndentLogger() func() {
+	log.SetOutput(text.NewIndentWriter(os.Stderr, []byte("    ")))
+	return func() {
+		log.SetOutput(os.Stderr)
+	}
+}
 
 func init() {
 	err := os.Setenv("TANG_TEST", "1")
@@ -12,7 +22,36 @@ func init() {
 	}
 }
 
+func TestTrivialRepo(t *testing.T) {
+	cmd := Command("fixture", "tar", "xf", "trivial-repo.tar.bz2")
+	err := cmd.Run()
+	if err != nil {
+		t.Error(err)
+	}
+
+	e := PushEvent{
+		Ref: "refs/heads/master",
+		Repository: Repository{
+			Name:         "trivial-repo",
+			Organization: "example",
+			Url:          "fixture/trivial-repo",
+		},
+		After:  "master",
+		Pusher: Pusher{Name: "testuser"},
+	}
+
+	allowedPushersSet["testuser"] = true
+	defer delete(allowedPushersSet, "testuser")
+
+	err = eventPush(e)
+	if err != nil {
+		t.Error(err)
+	}
+}
+
 func TestPush(t *testing.T) {
+	defer IndentLogger()()
+
 	e := PushEvent{
 		Ref: "refs/heads/master",
 		Repository: Repository{
@@ -35,6 +74,8 @@ func TestPush(t *testing.T) {
 }
 
 func TestEvent(t *testing.T) {
+	defer IndentLogger()()
+
 	allowedPushersSet["testuser"] = true
 	defer delete(allowedPushersSet, "testuser")
 
@@ -52,6 +93,8 @@ func TestEvent(t *testing.T) {
 }
 
 func TestAccess(t *testing.T) {
+	defer IndentLogger()()
+
 	allowedPushersSet["testuser"] = true
 	defer delete(allowedPushersSet, "testuser")
 
