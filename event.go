@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -115,8 +116,18 @@ func handleHook(w http.ResponseWriter, r *http.Request) {
 func runTang(repo, sha, repo_path, ref, logPath string) (err error) {
 
 	// TODO(pwaller): do tee in go.
-	c := `./tang.hook |& tee $TANG_LOGPATH; exit ${PIPESTATUS[0]}`
-	cmd := Command(repo_path, "bash", "-c", c)
+	// c := `./tang.hook |& tee $TANG_LOGPATH; exit ${PIPESTATUS[0]}`
+	// cmd := Command(repo_path, "bash", "-c", c)
+	cmd := Command(repo_path, "./tang.hook")
+
+	tang_logfile, err := os.Open(logPath)
+	if err != nil {
+		return
+	}
+	defer tang_logfile.Close()
+
+	cmd.Stdout = io.MultiWriter(os.Stdout, tang_logfile)
+	cmd.Stderr = io.MultiWriter(os.Stderr, tang_logfile)
 
 	cmd.Env = append(os.Environ(),
 		"TANG_SHA="+sha, "TANG_REF="+ref, "TANG_LOGPATH="+logPath)
