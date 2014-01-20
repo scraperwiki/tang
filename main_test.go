@@ -1,9 +1,19 @@
 package main
 
 import (
+	"log"
 	"os"
 	"testing"
+
+	"github.com/kr/text"
 )
+
+func IndentLogger() func() {
+	log.SetOutput(text.NewIndentWriter(os.Stderr, []byte("    ")))
+	return func() {
+		log.SetOutput(os.Stderr)
+	}
+}
 
 func init() {
 	err := os.Setenv("TANG_TEST", "1")
@@ -40,6 +50,7 @@ func TestTrivialRepo(t *testing.T) {
 }
 
 func TestPush(t *testing.T) {
+	defer IndentLogger()()
 
 	e := PushEvent{
 		Ref: "refs/heads/master",
@@ -63,6 +74,8 @@ func TestPush(t *testing.T) {
 }
 
 func TestEvent(t *testing.T) {
+	defer IndentLogger()()
+
 	allowedPushersSet["testuser"] = true
 	defer delete(allowedPushersSet, "testuser")
 
@@ -80,6 +93,8 @@ func TestEvent(t *testing.T) {
 }
 
 func TestAccess(t *testing.T) {
+	defer IndentLogger()()
+
 	allowedPushersSet["testuser"] = true
 	defer delete(allowedPushersSet, "testuser")
 
