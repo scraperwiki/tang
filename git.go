@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -85,10 +86,19 @@ func Github(payload string, endpoint ...string) (respString string, resp *http.R
 
 	url := Endpoint(endpoint...)
 	resp, err = http.Post(url, "application/json", strings.NewReader(payload))
-	check(err)
+	switch err {
+	case io.EOF:
+		// We've observed io.EOF here, and it is safe to ignore.
+		log.Println("EOF: from", url, resp.Status, resp.Header)
+	default:
+		check(err)
+	}
 
 	response, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
+		if err == io.EOF {
+			log.Println("EOF from", url, response)
+		}
 		return
 	}
 
