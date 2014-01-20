@@ -1,12 +1,14 @@
 #! /bin/bash
 
+set -u
+set -e
+
+rm -f "${GOPATH}/bin/tang"
 
 V="$(git rev-parse ${TANG_SHA-HEAD})"
 D="$(git log -1 --pretty="%ci" ${TANG_SHA-HEAD})"
 
 LDFLAGS="-X main.tangRev $V -X main.tangDate '$D'"
 echo "Installing tang..."
-# go install -v -ldflags "$LDFLAGS" github.com/scraperwiki/tang
-# echo "Getting requisites..."
 go get -v -ldflags "$LDFLAGS" github.com/scraperwiki/tang
 
