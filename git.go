@@ -55,6 +55,7 @@ type PushEvent struct {
 	After      string     `json:"after"`
 	Pusher     Pusher     `json:"pusher"`
 	NonGithub  NonGithub  `json:"nongithub"`
+	HtmlUrl    string     `json:"html_url"`
 }
 
 type GithubStatus struct {

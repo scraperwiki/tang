@@ -26,7 +26,7 @@ func TestTrivialRepo(t *testing.T) {
 	cmd := Command("fixture", "tar", "xf", "trivial-repo.tar.bz2")
 	err := cmd.Run()
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	e := PushEvent{
