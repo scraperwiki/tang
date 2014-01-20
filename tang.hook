@@ -4,6 +4,13 @@ set -e
 
 echo "# tang.hook invoked at ${TANG_REF}"
 
+echo "Fetching test dependencies.."
+if ! go get -d -v $(go list -f '{{range .TestImports}}{{.}} {{end}}');
+then
+    echo "Failed to fetch test dependencies"
+    exit 1
+fi
+
 if ! go test -v;
 then
 	echo "Tests failed"
