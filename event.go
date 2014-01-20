@@ -124,7 +124,7 @@ func runTang(repo, sha, repo_path, ref, logPath string) (err error) {
 	// cmd := Command(repo_path, "bash", "-c", c)
 	cmd := Command(repo_path, "./tang.hook")
 
-	tang_logfile, err := os.Open(logPath)
+	tang_logfile, err := os.Create(logPath)
 	if err != nil {
 		return
 	}
