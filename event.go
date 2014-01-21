@@ -170,6 +170,10 @@ func eventPush(event PushEvent) (err error) {
 	// Update our local mirror
 	err = gitLocalMirror(event.Repository.Url, git_dir)
 	if err != nil {
+		err = fmt.Errorf("Failed to update git mirror: %q", err)
+		infoURL := "http://services.scraperwiki.com/tang/"
+		s := GithubStatus{"failure", infoURL, err.Error()}
+		updateStatus(gh_repo, event.After, s)
 		return
 	}
 
