@@ -15,6 +15,7 @@ import (
 	"path"
 	"regexp"
 	"strings"
+	"time"
 )
 
 const GIT_BASE_DIR = "repo"
@@ -132,8 +133,24 @@ func gitLocalMirror(url, git_dir string) (err error) {
 
 	} else if _, ok := err.(*exec.ExitError); ok {
 
+		done := make(chan struct{})
 		// Try "git remote update"
-		err = Command(git_dir, "git", "fetch").Run()
+
+		cmd := Command(git_dir, "git", "fetch")
+		go func() {
+			err = cmd.Run()
+			log.Printf("Normal completion of cmd %+v", cmd)
+			close(done)
+		}()
+
+		const timeout = 5 * time.Second
+		select {
+		case <-done:
+		case <-time.After(timeout):
+			err = cmd.Process.Kill()
+			log.Printf("Killing cmd %+v after %v, error returned: %v", cmd, timeout, err)
+			err = fmt.Errorf("cmd %+v timed out", cmd)
+		}
 
 		if err != nil {
 			// git fetch where there is no update is exit status 1.
