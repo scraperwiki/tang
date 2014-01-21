@@ -137,6 +137,7 @@ func gitLocalMirror(url, git_dir string) (err error) {
 		// Try "git remote update"
 
 		cmd := Command(git_dir, "git", "fetch")
+		cmd.Env = append(os.Environ(), "GIT_TRACE=1")
 		go func() {
 			err = cmd.Run()
 			log.Printf("Normal completion of cmd %+v", cmd)
