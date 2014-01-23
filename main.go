@@ -16,6 +16,9 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/dustin/go-follow"
+	"github.com/gorilla/websocket"
 )
 
 var (
@@ -183,6 +186,53 @@ func ExitOnEOF() {
 	}()
 }
 
+type WebsocketWriter struct {
+	*websocket.Conn
+}
+
+func (ww *WebsocketWriter) Write(data []byte) (n int, err error) {
+	err = ww.WriteMessage(websocket.BinaryMessage, data)
+	if err == nil {
+		n = len(data)
+	}
+	return
+}
+
+func LiveLogHandler(response http.ResponseWriter, req *http.Request) {
+	ws, err := websocket.Upgrade(response, req, nil, 1024, 1024)
+
+	if _, ok := err.(websocket.HandshakeError); ok {
+		http.Error(response, "Not a websocket handshake", 400)
+		return
+	} else if err != nil {
+		log.Println(err)
+		return
+	}
+
+	stationaryFd, err := os.Open("/home/pwaller/test.log")
+	check(err)
+	fd := follow.New(stationaryFd)
+
+	w := &WebsocketWriter{ws}
+	n, err := io.Copy(w, fd)
+	log.Println("Err = ", err, n)
+
+	// ws.Write
+	// ws.NextWriter(messageType)
+	// ws.WriteJSON("Hello, world")
+
+	// w, err := ws.NextWriter(websocket.BinaryMessage)
+	// check(err)
+	// for i := 0; i < 1000; i++ {
+	// w.Write([]byte("Hello, world"))
+	// w.Close()
+
+	// ws.Wr
+	// }
+
+	_ = follow.New
+}
+
 func ServeHTTP(l net.Listener) {
 	// Expose logs directory
 	pwd, err := os.Getwd()
@@ -196,6 +246,7 @@ func ServeHTTP(l net.Listener) {
 	handler := NewTangHandler()
 
 	handler.HandleFunc("/tang/", handleTang)
+	handler.HandleFunc("/tang/live/logs/", LiveLogHandler)
 	handler.Handle("/tang/logs/", http.StripPrefix("/tang/logs/", logHandler))
 	handler.HandleFunc("/hook", handleHook)
 
