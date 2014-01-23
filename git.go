@@ -144,7 +144,7 @@ func gitLocalMirror(url, git_dir string) (err error) {
 			close(done)
 		}()
 
-		const timeout = 5 * time.Second
+		const timeout = 20 * time.Second
 		select {
 		case <-done:
 		case <-time.After(timeout):
