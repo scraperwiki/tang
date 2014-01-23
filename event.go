@@ -133,8 +133,9 @@ func runTang(repo, repo_path, logPath string, event PushEvent) (err error) {
 	}
 	defer tang_logfile.Close()
 
-	cmd.Stdout = io.MultiWriter(os.Stdout, tang_logfile)
-	cmd.Stderr = io.MultiWriter(os.Stderr, tang_logfile)
+	out := io.MultiWriter(os.Stdout, tang_logfile)
+	cmd.Stdout = out
+	cmd.Stderr = out
 
 	cmd.Env = append(os.Environ(),
 		"TANG_SHA="+sha, "TANG_REF="+ref, "TANG_LOGPATH="+logPath)
