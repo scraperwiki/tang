@@ -5,7 +5,7 @@ workdir /tang
 env GOPATH /tang
 env PATH /tang/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-run apt-get install python-pip
+run apt-get install -yy python-pip
 run pip install --upgrade pip
 
 # TODO(pwaller, drj): Remove this when we do docker-inside-docker
