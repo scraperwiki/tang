@@ -15,6 +15,7 @@ import (
 	"path"
 	"regexp"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -116,6 +117,23 @@ func updateStatus(repo, sha string, githubStatus GithubStatus) {
 	bytes, err := json.Marshal(githubStatus)
 	check(err)
 	Github(string(bytes), "repos", repo, "statuses", sha)
+}
+
+func gitSetupCredentialHelper() (err error) {
+	cmd := Command(".", "git", "config", "--get", "credential.helper")
+	err = cmd.Run()
+	if err == nil {
+		return
+	}
+
+	if err, ok := err.(*exec.ExitError); ok {
+		if err.ProcessState.Sys().(*syscall.WaitStatus).ExitStatus() == 1 {
+			value := `!f() { echo username=$GITHUB_USER; echo password=$GITHUB_PASSWORD; }; f`
+			cmd = Command(".", "git", "config", "--global", "credential.helper", value)
+			return cmd.Run()
+		}
+	}
+	return
 }
 
 // Creates or updates a mirror of `url` at `git_dir` using `git clone --mirror`
