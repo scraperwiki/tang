@@ -127,7 +127,7 @@ func gitSetupCredentialHelper() (err error) {
 	}
 
 	if err, ok := err.(*exec.ExitError); ok {
-		if err.ProcessState.Sys().(*syscall.WaitStatus).ExitStatus() == 1 {
+		if err.ProcessState.Sys().(syscall.WaitStatus).ExitStatus() == 1 {
 			value := `!f() { echo username=$GITHUB_USER; echo password=$GITHUB_PASSWORD; }; f`
 			cmd = Command(".", "git", "config", "--global", "credential.helper", value)
 			return cmd.Run()
