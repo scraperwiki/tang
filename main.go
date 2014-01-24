@@ -73,6 +73,9 @@ func main() {
 		check(err)
 	}
 
+	err = gitSetupCredentialHelper()
+	check(err)
+
 	// Start catching signals early.
 	sig := make(chan os.Signal)
 	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
