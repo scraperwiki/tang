@@ -145,7 +145,10 @@ func gitLocalMirror(url, git_dir string, messages io.Writer) (err error) {
 	}
 
 	log.Println("Working directory: ")
-	Command(".", "pwd").Run()
+	err = Command(".", "pwd").Run()
+	if err != nil {
+		panic(err)
+	}
 
 	cmd := Command(".", "git", "clone", "-q", "--mirror", url, git_dir)
 	cmd.Stdout = messages
@@ -166,7 +169,7 @@ func gitLocalMirror(url, git_dir string, messages io.Writer) (err error) {
 		cmd.Env = append(os.Environ(), "GIT_TRACE=1")
 		go func() {
 			err = cmd.Run()
-			log.Printf("Normal completion of cmd %+v", cmd)
+			log.Printf("Normal completion ", cmd.Args, cmd.Dir)
 			close(done)
 		}()
 
