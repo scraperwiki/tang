@@ -15,7 +15,7 @@ run apt-get install -yy python-lxml
 run mkdir /var/docker-outside-docker
 run ln -s /var/docker-outside-docker/docker.sock /var/run/docker.sock
 
-entrypoint ["./start-tang"]
+entrypoint ["/tang/src/start-tang"]
 
 #entrypoint ["bash", "-c", "mkdir -p /tang/src/github.com/scraperwiki && ln -sT /tang /tang/src/github.com/scraperwiki/tang && env && ./install-tang && exec tang \"$@\""]
 
