@@ -4,6 +4,9 @@ set -e
 
 echo "# tang.hook invoked at ${TANG_REF}"
 
+echo "Fetching dependencies..."
+go get -d -v
+
 echo "Fetching test dependencies.."
 if ! go get -d -v $(go list -f '{{range .TestImports}}{{.}} {{end}}');
 then

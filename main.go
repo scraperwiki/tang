@@ -16,6 +16,9 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/dustin/go-follow"
+	"github.com/gorilla/websocket"
 )
 
 var (
@@ -186,6 +189,54 @@ func ExitOnEOF() {
 	}()
 }
 
+type WebsocketWriter struct {
+	*websocket.Conn
+}
+
+func (ww *WebsocketWriter) Write(data []byte) (n int, err error) {
+	err = ww.WriteMessage(websocket.BinaryMessage, data)
+	if err == nil {
+		n = len(data)
+	}
+	return
+}
+
+func LiveLogHandler(response http.ResponseWriter, req *http.Request) {
+	ws, err := websocket.Upgrade(response, req, nil, 1024, 1024)
+	defer ws.Close()
+
+	if _, ok := err.(websocket.HandshakeError); ok {
+		http.Error(response, "Not a websocket handshake", 400)
+		return
+	} else if err != nil {
+		log.Println(err)
+		return
+	}
+
+	stationaryFd, err := os.Open("/home/pwaller/test.log")
+	check(err)
+	defer stationaryFd.Close()
+	fd := follow.New(stationaryFd)
+
+	go func() {
+		var err error
+		// Wait until the other end closes the connection or sends
+		// a message.
+		t, m, err := ws.ReadMessage()
+		if err != io.EOF && err != io.ErrUnexpectedEOF {
+			log.Println("LiveLogHandler(): error reading msg: ", err)
+		}
+		_, _ = t, m
+		// Close the follow descripter, causes Copy to terminate
+		_ = fd.Close()
+	}()
+
+	w := &WebsocketWriter{ws}
+	// Blocks until web connection is closed.
+	_, err = io.Copy(w, fd)
+	// log.Println("Err =", err, n)
+}
+
 func ServeHTTP(l net.Listener) {
 	// Expose logs directory
 	pwd, err := os.Getwd()
@@ -199,6 +250,7 @@ func ServeHTTP(l net.Listener) {
 	handler := NewTangHandler()
 
 	handler.HandleFunc("/tang/", handleTang)
+	handler.HandleFunc("/tang/live/logs/", LiveLogHandler)
 	handler.Handle("/tang/logs/", http.StripPrefix("/tang/logs/", logHandler))
 	handler.HandleFunc("/hook", handleHook)
 
