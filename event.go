@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"time"
 )
 
 var jsonLogFile, _ = os.Create("logs/json.log")
@@ -130,7 +131,10 @@ func runTang(repo, repo_path string, log io.Writer, event PushEvent) (err error)
 
 	cmd.Env = append(os.Environ(),
 		"TANG_SHA="+sha, "TANG_REF="+ref)
+
+	start := time.Now()
 	err = cmd.Run()
+	fmt.Fprintf(logW, "Hook took %v\n", time.Since(start))
 
 	return
 }
