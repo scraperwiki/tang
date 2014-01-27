@@ -118,16 +118,14 @@ func handleHook(w http.ResponseWriter, r *http.Request) {
 }
 
 // Invoked when a respository we are watching changes
-func runTang(repo, repo_path string, log io.Writer, event PushEvent) (err error) {
+func runTang(repo, repo_path string, logW io.Writer, event PushEvent) (err error) {
 
 	sha := event.After
 	ref := event.Ref
 
 	cmd := Command(repo_path, "./tang.hook")
-
-	out := io.MultiWriter(os.Stdout, log)
-	cmd.Stdout = out
-	cmd.Stderr = out
+	cmd.Stdout = logW
+	cmd.Stderr = logW
 
 	cmd.Env = append(os.Environ(),
 		"TANG_SHA="+sha, "TANG_REF="+ref)
@@ -191,13 +189,15 @@ func eventPush(event PushEvent) (err error) {
 	}
 	defer tangLog.Close()
 
+	logWriter := io.MultiWriter(os.Stdout, tangLog)
+
 	// The name of the subdirectory where the git
 	// mirror is (or will appear, if it hasn't been
 	// cloned yet).
 	git_dir := path.Join(GIT_BASE_DIR, gh_repo)
 
 	// Update our local mirror
-	err = gitLocalMirror(event.Repository.Url, git_dir, tangLog)
+	err = gitLocalMirror(event.Repository.Url, git_dir, logWriter)
 	if err != nil {
 		err = fmt.Errorf("Failed to update git mirror: %q", err)
 		infoURL := "http://services.scraperwiki.com/tang/"
@@ -210,10 +210,10 @@ func eventPush(event PushEvent) (err error) {
 	tang_hook_present, err := gitHaveFile(git_dir, event.After, "tang.hook")
 	if err != nil || !tang_hook_present || event.NonGithub.NoBuild {
 		// Bail out, error, no tang.hook or instructed not to build it.
-		fmt.Fprintln(tangLog, "No tang.hook, exiting.")
+		fmt.Fprintln(logWriter, "No tang.hook, exiting.")
 		return
 	}
-	fmt.Fprintln(tangLog, "Checkout..")
+	fmt.Fprintln(logWriter, "Checkout..")
 
 	// Dereference event.After, always. Not needed for github but useful for
 	// `tang-event`, where we don't know the sha beforehand.
@@ -248,7 +248,7 @@ func eventPush(event PushEvent) (err error) {
 
 	// Run the tang script for the repository, if there is one.
 	repo_workdir := path.Join(git_dir, checkout_dir)
-	err = runTang(gh_repo, repo_workdir, tangLog, event)
+	err = runTang(gh_repo, repo_workdir, logWriter, event)
 
 	if err == nil {
 		// All OK, send along a green
