@@ -174,6 +174,8 @@ func eventPush(event PushEvent) (err error) {
 
 	log.Println("Push to", event.Repository.Url, event.Ref, "after", event.After)
 
+	shortSha := event.After[:6]
+
 	logPath, diskLogPath, err := getLogPath(shortSha)
 	if err != nil {
 		return
@@ -204,23 +206,24 @@ func eventPush(event PushEvent) (err error) {
 	tang_hook_present, err := gitHaveFile(git_dir, event.After, "tang.hook")
 	if err != nil || !tang_hook_present || event.NonGithub.NoBuild {
 		// Bail out, error, no tang.hook or instructed not to build it.
+        fmt.Fprintln(tangLog, "No tang.hook, exiting.")
 		return
 	}
+    fmt.Fprintln(tangLog, "Checkout..")
 
 	// Dereference event.After, always. Not needed for github but useful for
 	// `tang-event`, where we don't know the sha beforehand.
-	BREAKAGE // TODO(pwaller): Hmm. Need to thing about this if we want to start
+	//BREAKAGE // TODO(pwaller): Hmm. Need to thing about this if we want to start
 	// logging immediately. Was a nice idea but I'm not so sure if a good one
 	// anymore.
-	sha, err := gitRevParse(git_dir, event.After)
-	if err != nil {
-		err = fmt.Errorf("gitRevParse: %q", err)
-		return
-	}
+	//sha, err := gitRevParse(git_dir, event.After)
+	//if err != nil {
+	//err = fmt.Errorf("gitRevParse: %q", err)
+	//return
+	//}
 
 	// Only use 6 characters of sha for the name of the
 	// directory checked out for this repository by tang.
-	shortSha := sha[:6]
 	checkout_dir := path.Join("checkout", shortSha)
 
 	// Checkout the target sha

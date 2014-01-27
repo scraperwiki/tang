@@ -36,7 +36,7 @@ func TestTrivialRepo(t *testing.T) {
 			Organization: "example",
 			Url:          "fixture/trivial-repo",
 		},
-		After:  "master",
+		After:  "96ad1ed5a4ca297259e833a831dd6a8f028cc75",
 		Pusher: Pusher{Name: "testuser"},
 	}
 
