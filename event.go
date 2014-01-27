@@ -193,7 +193,7 @@ func eventPush(event PushEvent) (err error) {
 	git_dir := path.Join(GIT_BASE_DIR, gh_repo)
 
 	// Update our local mirror
-	err = gitLocalMirror(event.Repository.Url, git_dir)
+	err = gitLocalMirror(event.Repository.Url, git_dir, tangLog)
 	if err != nil {
 		err = fmt.Errorf("Failed to update git mirror: %q", err)
 		infoURL := "http://services.scraperwiki.com/tang/"
@@ -206,10 +206,10 @@ func eventPush(event PushEvent) (err error) {
 	tang_hook_present, err := gitHaveFile(git_dir, event.After, "tang.hook")
 	if err != nil || !tang_hook_present || event.NonGithub.NoBuild {
 		// Bail out, error, no tang.hook or instructed not to build it.
-        fmt.Fprintln(tangLog, "No tang.hook, exiting.")
+		fmt.Fprintln(tangLog, "No tang.hook, exiting.")
 		return
 	}
-    fmt.Fprintln(tangLog, "Checkout..")
+	fmt.Fprintln(tangLog, "Checkout..")
 
 	// Dereference event.After, always. Not needed for github but useful for
 	// `tang-event`, where we don't know the sha beforehand.
