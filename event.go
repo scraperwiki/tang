@@ -123,6 +123,9 @@ func runTang(repo, repo_path string, logW io.Writer, event PushEvent) (err error
 	sha := event.After
 	ref := event.Ref
 
+	pwd, err := os.Getwd()
+	fmt.Fprintf(logW, "repo_path=%s pwd=%s", repo_path, pwd)
+
 	cmd := Command(repo_path, "./tang.hook")
 	cmd.Stdout = logW
 	cmd.Stderr = logW
