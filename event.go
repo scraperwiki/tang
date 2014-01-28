@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"time"
 )
 
 var jsonLogFile, _ = os.Create("logs/json.log")
@@ -117,30 +118,42 @@ func handleHook(w http.ResponseWriter, r *http.Request) {
 }
 
 // Invoked when a respository we are watching changes
-func runTang(repo, repo_path, logPath string, event PushEvent) (err error) {
+func runTang(repo, repo_path string, logW io.Writer, event PushEvent) (err error) {
 
 	sha := event.After
 	ref := event.Ref
 
-	// TODO(pwaller): do tee in go.
-	// c := `./tang.hook |& tee $TANG_LOGPATH; exit ${PIPESTATUS[0]}`
-	// cmd := Command(repo_path, "bash", "-c", c)
 	cmd := Command(repo_path, "./tang.hook")
-
-	tang_logfile, err := os.Create(logPath)
-	if err != nil {
-		return
-	}
-	defer tang_logfile.Close()
-
-	out := io.MultiWriter(os.Stdout, tang_logfile)
-	cmd.Stdout = out
-	cmd.Stderr = out
+	cmd.Stdout = logW
+	cmd.Stderr = logW
 
 	cmd.Env = append(os.Environ(),
-		"TANG_SHA="+sha, "TANG_REF="+ref, "TANG_LOGPATH="+logPath)
-	err = cmd.Run()
+		"TANG_SHA="+sha, "TANG_REF="+ref)
 
+	start := time.Now()
+	err = cmd.Run()
+	fmt.Fprintf(logW, "Hook took %v\n", time.Since(start))
+
+	return
+}
+
+func getLogPath(shortSha string) (logPath, diskLogPath string, err error) {
+
+	pwd, err := os.Getwd()
+	if err != nil {
+		err = fmt.Errorf("getLogPath/getwd %q", err)
+		return
+	}
+
+	logDir := path.Join("logs", shortSha)
+	err = os.MkdirAll(logDir, 0777)
+	if err != nil {
+		err = fmt.Errorf("getLogPath/MkdirAll(%q): ", logDir, err)
+		return
+	}
+
+	logPath = path.Join(logDir, "log.txt")
+	diskLogPath = path.Join(pwd, logPath)
 	return
 }
 
@@ -163,13 +176,30 @@ func eventPush(event PushEvent) (err error) {
 
 	log.Println("Push to", event.Repository.Url, event.Ref, "after", event.After)
 
+	// Only use 6 characters of sha for the name of the
+	// directory checked out for this repository by tang.
+	shortSha := event.After[:6]
+
+	logPath, diskLogPath, err := getLogPath(shortSha)
+	if err != nil {
+		return
+	}
+
+	tangLog, err := os.Create(diskLogPath)
+	if err != nil {
+		return
+	}
+	defer tangLog.Close()
+
+	logWriter := io.MultiWriter(os.Stdout, tangLog)
+
 	// The name of the subdirectory where the git
 	// mirror is (or will appear, if it hasn't been
 	// cloned yet).
 	git_dir := path.Join(GIT_BASE_DIR, gh_repo)
 
 	// Update our local mirror
-	err = gitLocalMirror(event.Repository.Url, git_dir)
+	err = gitLocalMirror(event.Repository.Url, git_dir, logWriter)
 	if err != nil {
 		err = fmt.Errorf("Failed to update git mirror: %q", err)
 		infoURL := "http://services.scraperwiki.com/tang/"
@@ -182,21 +212,12 @@ func eventPush(event PushEvent) (err error) {
 	tang_hook_present, err := gitHaveFile(git_dir, event.After, "tang.hook")
 	if err != nil || !tang_hook_present || event.NonGithub.NoBuild {
 		// Bail out, error, no tang.hook or instructed not to build it.
+		fmt.Fprintln(logWriter, "No tang.hook, exiting.")
 		return
 	}
+	fmt.Fprintln(logWriter, "Checkout..")
 
-	// Dereference event.After, always. Not needed for github but useful for
-	// `tang-event`, where we don't know the sha beforehand.
-	sha, err := gitRevParse(git_dir, event.After)
-	if err != nil {
-		err = fmt.Errorf("gitRevParse: %q", err)
-		return
-	}
-
-	// Only use 6 characters of sha for the name of the
-	// directory checked out for this repository by tang.
-	short_sha := sha[:6]
-	checkout_dir := path.Join("checkout", short_sha)
+	checkout_dir := path.Join("checkout", shortSha)
 
 	// Checkout the target sha
 	err = gitCheckout(git_dir, checkout_dir, event.After)
@@ -205,22 +226,6 @@ func eventPush(event PushEvent) (err error) {
 	}
 
 	log.Println("Created", checkout_dir)
-
-	pwd, err := os.Getwd()
-	if err != nil {
-		err = fmt.Errorf("runTang/getwd %q", err)
-		return
-	}
-
-	logDir := path.Join("logs", short_sha)
-	err = os.MkdirAll(logDir, 0777)
-	if err != nil {
-		err = fmt.Errorf("runTang/MkdirAll(%q): ", logDir, err)
-		return
-	}
-
-	logPath := path.Join(logDir, "log.txt")
-	fullLogPath := path.Join(pwd, logPath)
 
 	// TODO(pwaller): One day this will have more information, e.g, QA link.
 	infoURL := "http://services.scraperwiki.com/tang/" + logPath
@@ -232,7 +237,7 @@ func eventPush(event PushEvent) (err error) {
 
 	// Run the tang script for the repository, if there is one.
 	repo_workdir := path.Join(git_dir, checkout_dir)
-	err = runTang(gh_repo, repo_workdir, fullLogPath, event)
+	err = runTang(gh_repo, repo_workdir, logWriter, event)
 
 	if err == nil {
 		// All OK, send along a green

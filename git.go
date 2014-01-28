@@ -137,14 +137,23 @@ func gitSetupCredentialHelper() (err error) {
 }
 
 // Creates or updates a mirror of `url` at `git_dir` using `git clone --mirror`
-func gitLocalMirror(url, git_dir string) (err error) {
+func gitLocalMirror(url, git_dir string, messages io.Writer) (err error) {
 
 	err = os.MkdirAll(git_dir, 0777)
 	if err != nil {
 		return
 	}
 
-	err = Command(".", "git", "clone", "-q", "--mirror", url, git_dir).Run()
+	log.Println("Working directory: ")
+	err = Command(".", "pwd").Run()
+	if err != nil {
+		panic(err)
+	}
+
+	cmd := Command(".", "git", "clone", "-q", "--mirror", url, git_dir)
+	cmd.Stdout = messages
+	cmd.Stderr = messages
+	err = cmd.Run()
 
 	if err == nil {
 		log.Println("Cloned", url)
@@ -155,10 +164,12 @@ func gitLocalMirror(url, git_dir string) (err error) {
 		// Try "git remote update"
 
 		cmd := Command(git_dir, "git", "fetch")
+		cmd.Stdout = messages
+		cmd.Stderr = messages
 		cmd.Env = append(os.Environ(), "GIT_TRACE=1")
 		go func() {
 			err = cmd.Run()
-			log.Printf("Normal completion of cmd %+v", cmd)
+			log.Printf("Normal completion ", cmd.Args, cmd.Dir)
 			close(done)
 		}()
 
