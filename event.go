@@ -124,9 +124,21 @@ func runTang(repo, repo_path string, logW io.Writer, event PushEvent) (err error
 	ref := event.Ref
 
 	pwd, err := os.Getwd()
-	fmt.Fprintf(logW, "repo_path=%s pwd=%s", repo_path, pwd)
+	fmt.Fprintf(logW, "repo_path=%s pwd=%s\n", repo_path, pwd)
 
-	cmd := Command(repo_path, "./tang.hook")
+	fmt.Fprintln(logW, "pwd:")
+	cmd := Command(repo_path, "pwd")
+	cmd.Stdout = logW
+	cmd.Stderr = logW
+	cmd.Run()
+
+	fmt.Fprintln(logW, "ls -l:")
+	cmd = Command(repo_path, "ls", "-l")
+	cmd.Stdout = logW
+	cmd.Stderr = logW
+	cmd.Run()
+
+	cmd = Command(repo_path, "./tang.hook")
 	cmd.Stdout = logW
 	cmd.Stderr = logW
 
