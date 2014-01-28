@@ -138,7 +138,7 @@ func runTang(repo, repo_path string, logW io.Writer, event PushEvent) (err error
 	cmd.Stderr = logW
 	cmd.Run()
 
-	cmd = Command(repo_path, "./tang.hook")
+	cmd = Command(repo_path, "/bin/bash", "-c", "echo foo; ./tang.hook")
 	cmd.Stdout = logW
 	cmd.Stderr = logW
 
