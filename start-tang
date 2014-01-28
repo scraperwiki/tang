@@ -34,7 +34,7 @@ fi
 
 # So that go install can find it
 mkdir -p /tang/src/github.com/scraperwiki
-ln -sfT /tang /tang/src/github.com/scraperwiki/tang
+ln -sfT /tang/src/tang /tang/src/github.com/scraperwiki/tang
 
 env
 # The install-tang script only works if the current working directory
