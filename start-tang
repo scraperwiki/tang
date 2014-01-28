@@ -37,7 +37,7 @@ mkdir -p /tang/src/github.com/scraperwiki
 ln -sfT /tang /tang/src/github.com/scraperwiki/tang
 
 env
-./install-tang
+/tang/src/tang/install-tang
 
 echo "Running tang..."
 exec tang "$@"
