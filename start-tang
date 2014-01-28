@@ -37,7 +37,11 @@ mkdir -p /tang/src/github.com/scraperwiki
 ln -sfT /tang /tang/src/github.com/scraperwiki/tang
 
 env
-/tang/src/tang/install-tang
+# The install-tang script only works if the current working directory
+# is a bit repo containing the script. So we cd.
+( cd /tang/src/tang
+  /tang/src/tang/install-tang
+)
 
 echo "Running tang..."
 exec tang "$@"
