@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"path"
 	"time"
 )
@@ -125,6 +126,10 @@ func runTang(repo, repo_path string, logW io.Writer, event PushEvent) (err error
 
 	pwd, err := os.Getwd()
 	fmt.Fprintf(logW, "repo_path=%s pwd=%s\n", repo_path, pwd)
+
+	tangBin, err := exec.LookPath("./tang.hook")
+
+	fmt.Fprintln(logW, "tangBin=%q err=%q", tangBin, err)
 
 	fmt.Fprintln(logW, "pwd:")
 	cmd := Command(repo_path, "pwd")
