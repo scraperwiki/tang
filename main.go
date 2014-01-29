@@ -137,7 +137,7 @@ func main() {
 	// This is probably very tricky to get right without delaying the exec.
 	// How do we find our children? Might involve iterating through /proc.
 
-	err = syscall.Exec(exe, os.Args, os.Environ())
+	err = syscall.Exec(exe, os.Args, gitCredentialsEnviron())
 	check(err)
 }
 
