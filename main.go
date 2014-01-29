@@ -43,6 +43,7 @@ func init() {
 	github_user = os.Getenv("GITHUB_USER")
 	github_password = os.Getenv("GITHUB_PASSWORD")
 	env := os.Environ()
+	os.Clearenv()
 	for _, e := range env {
 		if strings.HasPrefix(e, "GITHUB_") {
 			continue
