@@ -42,8 +42,15 @@ func init() {
 	}
 	github_user = os.Getenv("GITHUB_USER")
 	github_password = os.Getenv("GITHUB_PASSWORD")
-	os.Setenv("GITHUB_USER", "")
-	os.Setenv("GITHUB_PASSWORD", "")
+	env := os.Environ()
+	for _, e := range env {
+		if strings.HasPrefix(e, "GITHUB_") {
+			continue
+		}
+		split := strings.SplitN(e, "=", 2)
+		key, value := split[0], split[1]
+		os.Setenv(key, value)
+	}
 }
 
 func check(err error) {

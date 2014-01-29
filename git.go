@@ -136,6 +136,10 @@ func gitSetupCredentialHelper() (err error) {
 	return
 }
 
+func gitCredentialsEnviron() []string {
+	return append(os.Environ(), "GITHUB_USER="+github_user, "GITHUB_PASSWORD="+github_password)
+}
+
 // Creates or updates a mirror of `url` at `git_dir` using `git clone --mirror`
 func gitLocalMirror(url, git_dir string, messages io.Writer) (err error) {
 
@@ -151,6 +155,8 @@ func gitLocalMirror(url, git_dir string, messages io.Writer) (err error) {
 	}
 
 	cmd := Command(".", "git", "clone", "-q", "--mirror", url, git_dir)
+	cmd.Env = gitCredentialsEnviron()
+
 	cmd.Stdout = messages
 	cmd.Stderr = messages
 	err = cmd.Run()
@@ -166,7 +172,8 @@ func gitLocalMirror(url, git_dir string, messages io.Writer) (err error) {
 		cmd := Command(git_dir, "git", "fetch")
 		cmd.Stdout = messages
 		cmd.Stderr = messages
-		cmd.Env = append(os.Environ(), "GIT_TRACE=1")
+		cmd.Env = gitCredentialsEnviron()
+		// cmd.Env = append(gitCredentialsEnviron(), "GIT_TRACE=1")
 		go func() {
 			err = cmd.Run()
 			log.Printf("Normal completion ", cmd.Args, cmd.Dir)
