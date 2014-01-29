@@ -42,6 +42,8 @@ func init() {
 	}
 	github_user = os.Getenv("GITHUB_USER")
 	github_password = os.Getenv("GITHUB_PASSWORD")
+	os.Setenv("GITHUB_USER", "")
+	os.Setenv("GITHUB_PASSWORD", "")
 }
 
 func check(err error) {
