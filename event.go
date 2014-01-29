@@ -11,8 +11,8 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"path"
+	"path/filepath"
 	"time"
 )
 
@@ -124,31 +124,17 @@ func runTang(repo, repo_path string, logW io.Writer, event PushEvent) (err error
 	sha := event.After
 	ref := event.Ref
 
-	pwd, err := os.Getwd()
-	fmt.Fprintf(logW, "repo_path=%s pwd=%s\n", repo_path, pwd)
-
-	tangBin, err := exec.LookPath("./tang.hook")
-
-	fmt.Fprintln(logW, "tangBin=%q err=%q", tangBin, err)
-
-	fmt.Fprintln(logW, "pwd:")
-	cmd := Command(repo_path, "pwd")
-	cmd.Stdout = logW
-	cmd.Stderr = logW
-	cmd.Run()
-
-	fmt.Fprintln(logW, "ls -l:")
-	cmd = Command(repo_path, "ls", "-l")
-	cmd.Stdout = logW
-	cmd.Stderr = logW
-	cmd.Run()
-
-	cmd = Command(repo_path, "/bin/bash", "-c", "echo foo; ./tang.hook")
+	// Note: The way the path of this executable is described is important;
+	// see http://code.google.com/p/go/issues/detail?id=7228
+	cmdPath, err := filepath.Abs(path.Join(repo_path, "tang.hook"))
+	if err != nil {
+		return
+	}
+	cmd := Command(repo_path, cmdPath)
 	cmd.Stdout = logW
 	cmd.Stderr = logW
 
-	cmd.Env = append(os.Environ(),
-		"TANG_SHA="+sha, "TANG_REF="+ref)
+	cmd.Env = append(os.Environ(), "TANG_SHA="+sha, "TANG_REF="+ref)
 
 	start := time.Now()
 	err = cmd.Run()
