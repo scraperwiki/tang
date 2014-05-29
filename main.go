@@ -8,8 +8,8 @@ import (
 	"net"
 	"net/http"
 	"net/http/httputil"
-	"net/url"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path"
 	"regexp"
@@ -60,7 +60,30 @@ func check(err error) {
 	}
 }
 
+func ensureChildDeath() {
+	sid, err := syscall.Setsid()
+	if err != nil {
+		sid = os.Getpid()
+	}
+	shc := fmt.Sprintf("trap 'kill -TERM -%d' HUP; while : ; do sleep 0.1; done", sid)
+	c := exec.Command("bash", "-c", shc)
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	c.SysProcAttr = &syscall.SysProcAttr{
+		Pdeathsig: syscall.SIGHUP,
+	}
+	err = c.Start()
+	check(err)
+	log.Println("Started..")
+
+	go func() {
+		err = c.Wait()
+		log.Println("Exited sentinel..", err)
+	}()
+}
+
 func main() {
+	ensureChildDeath()
 	if tangRev == "" {
 		log.Println("tangRev and tangDate unavailable.")
 		log.Println("Use install-tang script if you want build date/version")
@@ -270,27 +293,13 @@ func ServeHTTP(l net.Listener) {
 
 type TangHandler struct {
 	*http.ServeMux
-	ServerFactory
-}
-
-type ServerFactory interface {
-	Start(organization, repo, sha string)
-	Stop()
-}
-
-type serverFactory struct {
-}
-
-func (sf *serverFactory) Start(organization, repo, sha string) {
-
-}
-
-func (sf *serverFactory) Stop() {
-
+	requests chan<- Request
 }
 
 func NewTangHandler() *TangHandler {
-	return &TangHandler{http.NewServeMux(), &serverFactory{}}
+	requests := make(chan Request)
+	go ServerRouter(requests)
+	return &TangHandler{http.NewServeMux(), requests}
 }
 
 func (th *TangHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -304,6 +313,7 @@ func (th *TangHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	th.ServeMux.ServeHTTP(w, r)
 }
 
+// TODO(drj): add params here on the left of the branch.
 var checkQA, _ = regexp.Compile(`^([^.]+).([^.]+).qa.scraperwiki.com(:\d+)?`)
 
 func (th *TangHandler) HandleQA(w http.ResponseWriter, r *http.Request) (handled bool) {
@@ -311,19 +321,23 @@ func (th *TangHandler) HandleQA(w http.ResponseWriter, r *http.Request) (handled
 	if pieces == nil {
 		return
 	}
+	handled = true
 
 	ref, repository := pieces[1], pieces[2]
 	_, _ = ref, repository
 
 	//fmt.Fprintf(w, "TODO, proxy for %v %v %v", r.Host, ref, repository)
-
-	u, err := url.Parse("http://localhost/")
+	serverChan := make(chan Server)
+	th.requests <- Request{r.Host, serverChan}
+	server := <-serverChan
+	_, err := server.ready()
 	if err != nil {
+		http.Error(w, fmt.Sprintf("TANG Error from server: %q",
+			err), 500)
 		return
 	}
-	p := httputil.NewSingleHostReverseProxy(u)
+	p := httputil.NewSingleHostReverseProxy(server.url())
 	p.ServeHTTP(w, r)
-	handled = true
 	return
 }
 
