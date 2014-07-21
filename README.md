@@ -1,3 +1,8 @@
+Tang is on ice
+==============
+
+We stopped developing tang, sorry. It remains here for posterity.
+
 Tang
 ====
 
